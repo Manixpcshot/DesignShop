@@ -1,0 +1,25 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "DesignShop desktop permissions: file dialogs, clipboard images and opening folders.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:default",
+    "core:webview:default",
+    "dialog:default",
+    "dialog:allow-save",
+    "dialog:allow-open",
+    "dialog:allow-message",
+    "fs:default",
+    "fs:allow-read",
+    "fs:allow-write",
+    "fs:allow-exists",
+    "clipboard-manager:default",
+    "clipboard-manager:allow-write-image",
+    "clipboard-manager:allow-read-image",
+    "opener:default",
+    "opener:allow-open-path",
+    "shell:allow-open"
+  ]
+}

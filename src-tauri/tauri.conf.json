@@ -1,0 +1,73 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "DesignShop",
+  "version": "1.0.0",
+  "identifier": "app.designshop.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "DesignShop",
+        "width": 1500,
+        "height": 940,
+        "minWidth": 1080,
+        "minHeight": 660,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "decorations": true,
+        "transparent": false,
+        "theme": "Dark",
+        "dragDropEnabled": true,
+        "zoomHotkeysEnabled": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'; connect-src 'self' ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["deb", "rpm", "appimage", "nsis", "msi"],
+    "publisher": "DesignShop",
+    "copyright": "Copyright © 2026 DesignShop",
+    "category": "GraphicsAndDesign",
+    "shortDescription": "Photo & thumbnail editor",
+    "longDescription": "DesignShop is a beginner-friendly, Photoshop-class image editor with a Thumbnail Studio. English is the primary language, فارسی the second. Builds for Windows (exe/msi) and Linux (deb/rpm/AppImage).",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico",
+      "icons/icon.png"
+    ],
+    "resources": ["../README.md", "../LICENSE"],
+    "linux": {
+      "deb": {
+        "depends": ["libgtk-3-0", "libwebkit2gtk-4.1-0", "libayatana-appindicator3-1", "librsvg2-2"]
+      }
+    },
+    "windows": {
+      "webviewInstallMode": { "type": "downloadBootstrapper" },
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "installMode": "currentUser",
+        "languages": ["English", "Persian"],
+        "displayLanguageSelector": true
+      }
+    },
+    "appimage": {
+      "bundleMediaFramework": false
+    }
+  },
+  "plugins": {
+    "shell": {
+      "open": true
+    }
+  }
+}

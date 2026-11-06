@@ -1,0 +1,38 @@
+# dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# builds
+dist/
+dist-ssr/
+release/
+release-rust/
+out/
+build-tmp/
+
+# rust
+src-tauri/target/
+src-tauri/gen/schemas/
+
+# test artifacts
+tests/.tmp/
+coverage/
+*.log
+
+# editor / os
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# env
+.env
+.env.local
+.cache/
+
+# caches
+.eslintcache
+.vite/
