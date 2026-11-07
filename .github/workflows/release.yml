@@ -233,35 +233,36 @@ jobs:
             which linuxdeploy appimagetool rpmlinuxdeploy 2>/dev/null
           } | tee bundle-info.log
       # Job logs live in blob storage that is not always reachable from every
-      # network, but the annotations API always is — surface compiler output
-      # there and in the job summary so a failure is never a mystery.
-      - name: Annotate Rust failure
+      # network, but annotations and step summaries are. Surface the compiler
+      # output there so a failure is never a mystery.
+      - name: Diagnose Rust failure
         if: steps.rust_test.outcome == 'failure' || steps.rust_build.outcome == 'failure'
         run: |
-          emit() {
-            title="$1"
-            file="$2"
-            [ -f "$file" ] || return 0
-            grep -nE "(^error|^error\[|panicked at|^warning: unused|-->)" "$file" | head -30 > snippet.txt || true
-            if [ ! -s snippet.txt ]; then tail -30 "$file" > snippet.txt; fi
-            node -e '
-              const fs = require("fs");
-              const text = fs.readFileSync("snippet.txt", "utf8").slice(0, 12000);
-              for (let i = 0; i < text.length; i += 3000) {
-                const chunk = text.slice(i, i + 3000).replace(/%/g, "%25").replace(/\r/g, "").replace(/\n/g, "%0A");
-                console.log("::error title=" + process.argv[1] + "::" + chunk);
+          node - <<'NODE'
+          const fs = require("fs");
+          const strip = (s) => s.replace(/\x1b\[[0-9;]*m/g, "");
+          const chunks = [];
+          for (const f of ["rust-test.log", "rust-build.log"]) {
+            if (!fs.existsSync(f)) continue;
+            const text = strip(fs.readFileSync(f, "utf8"));
+            const linesArr = text.split("\n");
+            const hits = [];
+            linesArr.forEach((l, i) => {
+              if (/^error(\[|:)|panicked at|^\s+--> /.test(l)) {
+                hits.push(linesArr.slice(Math.max(0, i - 1), i + 4).join("\n"));
               }
-            ' "$title"
+            });
+            const body = hits.slice(0, 6).join("\n\n") || linesArr.slice(-25).join("\n");
+            chunks.push("### " + f + "\n" + body);
           }
-          emit "Rust tests" rust-test.log
-          emit "Tauri bundling" rust-build.log
-          {
-            echo "## Rust diagnostics"
-            echo "$(printf '\x60\x60\x60')"
-            tail -c 20000 rust-test.log 2>/dev/null || true
-            tail -c 20000 rust-build.log 2>/dev/null || true
-            echo "$(printf '\x60\x60\x60')"
-          } >> "$GITHUB_STEP_SUMMARY"
+          const out = chunks.join("\n\n");
+          const mrk = (t) => String.fromCharCode(96, 96, 96);
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, "## Rust diagnostics\n" + mrk() + "\n" + out + "\n" + mrk() + "\n");
+          for (const part of out.match(/[\s\S]{1,1200}/g) || []) {
+            const esc = part.replace(/%/g, "%25").replace(/\r/g, "").replace(/\n/g, "%0A");
+            console.log("::error title=Rust core::" + esc);
+          }
+          NODE
 
       - name: Report Rust log as an issue (logs are hard to fetch)
         if: steps.rust_test.outcome == 'failure' || steps.rust_build.outcome == 'failure'
