@@ -212,16 +212,25 @@ jobs:
         id: rust_test
         continue-on-error: true
         run: |
-          set +e
+          set -o pipefail
           cargo test --manifest-path src-tauri/Cargo.toml --no-default-features 2>&1 | tee rust-test.log
-          echo "status=$?" >> "$GITHUB_OUTPUT"
       - name: Build Tauri bundles
         id: rust_build
         continue-on-error: true
         run: |
-          set +e
+          set -o pipefail
           npx tauri build --bundles deb,rpm,appimage 2>&1 | tee rust-build.log
-          echo "status=$?" >> "$GITHUB_OUTPUT"
+      - name: Inspect bundles
+        id: rust_bundles
+        if: always()
+        run: |
+          set +e
+          {
+            echo '### bundle tree'
+            find src-tauri/target/release/bundle -type f 2>/dev/null | head -60
+            echo '### bundling tools'
+            which linuxdeploy appimagetool rpmlinuxdeploy 2>/dev/null
+          } | tee bundle-info.log
       - name: Report Rust log as an issue (logs are hard to fetch)
         if: steps.rust_test.outcome == 'failure' || steps.rust_build.outcome == 'failure'
         env:
@@ -229,11 +238,24 @@ jobs:
         run: |
           {
             echo '```'
-            tail -c 9000 rust-build.log 2>/dev/null || true
-            tail -c 6000 rust-test.log 2>/dev/null || true
+            head -c 12000 rust-build.log 2>/dev/null || true
+            echo
+            echo '--- tests ---'
+            head -c 6000 rust-test.log 2>/dev/null || true
             echo '```'
           } > body.md
           gh issue create --title "Rust core build log (${{ needs.prepare.outputs.version }})" --body-file body.md || true
+      - name: Upload Rust logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-logs
+          path: |
+            rust-test.log
+            rust-build.log
+            bundle-info.log
+          retention-days: 3
+          if-no-files-found: ignore
       - name: Collect Rust artifacts
         run: |
           set -e
