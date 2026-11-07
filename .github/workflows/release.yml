@@ -232,15 +232,37 @@ jobs:
             echo '### bundling tools'
             which linuxdeploy appimagetool rpmlinuxdeploy 2>/dev/null
           } | tee bundle-info.log
+      # Job logs live in blob storage that is not always reachable from every
+      # network, but the annotations API always is — surface compiler output
+      # there and in the job summary so a failure is never a mystery.
       - name: Annotate Rust failure
         if: steps.rust_test.outcome == 'failure' || steps.rust_build.outcome == 'failure'
         run: |
-          if [ -f rust-build.log ]; then
-            tail -c 1200 rust-build.log | tr '\n' ' ' | sed 's/^/::error title=Tauri bundling::/'
-          fi
-          if [ -f rust-test.log ]; then
-            tail -c 1200 rust-test.log | tr '\n' ' ' | sed 's/^/::error title=Rust tests::/'
-          fi
+          emit() {
+            title="$1"
+            file="$2"
+            [ -f "$file" ] || return 0
+            grep -nE "(^error|^error\[|panicked at|^warning: unused|-->)" "$file" | head -30 > snippet.txt || true
+            if [ ! -s snippet.txt ]; then tail -30 "$file" > snippet.txt; fi
+            node -e '
+              const fs = require("fs");
+              const text = fs.readFileSync("snippet.txt", "utf8").slice(0, 12000);
+              for (let i = 0; i < text.length; i += 3000) {
+                const chunk = text.slice(i, i + 3000).replace(/%/g, "%25").replace(/\r/g, "").replace(/\n/g, "%0A");
+                console.log("::error title=" + process.argv[1] + "::" + chunk);
+              }
+            ' "$title"
+          }
+          emit "Rust tests" rust-test.log
+          emit "Tauri bundling" rust-build.log
+          {
+            echo "## Rust diagnostics"
+            echo "$(printf '\x60\x60\x60')"
+            tail -c 20000 rust-test.log 2>/dev/null || true
+            tail -c 20000 rust-build.log 2>/dev/null || true
+            echo "$(printf '\x60\x60\x60')"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Report Rust log as an issue (logs are hard to fetch)
         if: steps.rust_test.outcome == 'failure' || steps.rust_build.outcome == 'failure'
         env:
