@@ -84,15 +84,18 @@ Right-click anywhere picks the colour under the cursor (eyedropper).
 
 ## 4. Text that looks like a designer made it
 
-The **Text** panel has two tabs:
+The **Text** panel has three tabs:
 
-- **Thumbnail styles** — 18 ready looks (neon, comic, chrome, gold, fire, holo,
-  retro 80s, sticker, meme, glass…). Click a tile and the selected text changes
-  instantly. Use the ⇄ button in the panel header to preview the style with a
-  different sample word (`WOW`, `SALE`, `NEW`, `EP.1`).
+- **Thumbnail** — 27 ready looks (neon, comic, chrome, gold, fire, holo,
+  retro 80s, sticker, meme, glass… plus nine Persian-first styles:
+  نئون فارسی، پاپ فارسی، طلایی فارسی، خوش‌نویسی…). Click a tile and the selected
+  text changes instantly. Use the ⇄ button in the panel header to preview with a
+  different sample word, and the **All / Persian / EN** chips to show only one
+  script.
 - **Text** — the fine controls: font, size, weight, colour, gradient,
   alignment, letter spacing, line height, curve, plus the layer effects
   (shadow, glow, stroke, corner radius).
+- **Fonts** — the font library (see below).
 
 Tips:
 
@@ -103,6 +106,28 @@ Tips:
   headline so nothing covers your words.
 - Persian text works out of the box: switch the language to فارسی and the
   **Vazirmatn** font plus right-to-left layout are used automatically.
+
+### The font library
+
+Open it with the **Fonts** tab in the right dock, or the **Open font library**
+button under the Text controls.
+
+- **38 fonts are included** and work offline — 21 Latin display/text faces and
+  17 that draw Persian correctly (Vazirmatn, Estedad, Lalezar, Jomhuria,
+  Noto Kufi/Naskh/Sans Arabic, Amiri, Cairo, Tajawal, Changa, Almarai, Kufam,
+  Scheherazade, Markazi Text, Lateef, Harmattan).
+- Every row previews the family **in its own letters**, so you never have to
+  guess. Type your own words in **Preview text** to see them live.
+- The green **FA** badge marks families that really shape Persian. A Latin-only
+  family would silently fall back to the system font with Persian text.
+- **Filter** by Headline / Text / Serif / Handwriting / Persian, or press
+  **Persian-capable** to show only fonts that support فارسی.
+- **Your own fonts:** press **Import font…** or drag `.ttf`, `.otf`, `.woff`
+  or `.woff2` files onto the drop strip. Imported fonts appear under
+  **My fonts** and in every font list, and they are remembered after a restart.
+  Remove one with the bin icon. Limits: 12 MB per file, 60 fonts.
+- Files never leave your computer; an imported font is stored in the app's own
+  local storage, not uploaded anywhere.
 
 ---
 
@@ -227,6 +252,23 @@ stay on your disk. No account, no analytics, no ads.
    امتحان کنید.
 ۵. با `Ctrl+Shift+E` خروجی بگیرید یا با «خروجی همه اندازه‌ها» همه سایزها را
    یک‌جا ذخیره کنید.
+
+### کتابخانه فونت
+
+تب **فونت‌ها** در پنل راست، یا دکمه **باز کردن کتابخانه فونت** زیر تنظیمات متن.
+
+- **۳۸ فونت همراه برنامه** است و آفلاین کار می‌کند — ۱۷ فونت فارسی را درست
+  نمایش می‌دهند (وزیرمتن، استعداد، لاله‌زار، جمهوریت، نوتو کوفی/نسخ/سانس،
+  امیری، قاهره، تجوال، چانگا، المراعی، کوفام، شهرزاد، مرکزی، لطیف، هرمتان).
+- هر ردیف فونت را **با حروف خودش** نشان می‌دهد؛ در کادر **متن پیش‌نمایش**
+  جمله خودت را بنویس تا همان‌جا ببینی.
+- نشان سبز **FA** یعنی این فونت فارسی را واقعاً درست می‌نویسد. فونت فقط‌لاتین
+  با متن فارسی بی‌صدا به فونت سیستم برمی‌گردد.
+- با **افزودن فونت…** یا کشیدن فایل `.ttf` / `.otf` / `.woff` / `.woff2`
+  روی نوار مربوطه، فونت خودت را اضافه کن. زیر **فونت‌های من** و در همه لیست‌ها
+  دیده می‌شود و بعد از بستن برنامه هم می‌ماند.
+- محدودیت: هر فایل تا ۱۲ مگابایت، حداکثر ۶۰ فونت. فایل‌ها از کامپیوتر تو
+  بیرون نمی‌روند.
 
 ### میان‌برهای مهم
 

@@ -13,12 +13,15 @@ import {
   updatePrefs,
   getState,
 } from '../../lib/store.js';
-import { TEXT_STYLES, FONT_LIST, EMOJI_SETS, styleById } from '../../lib/presets.js';
+import { TEXT_STYLES, EMOJI_SETS, styleById } from '../../lib/presets.js';
+import { allFonts, filterFonts, fontById } from '../../lib/fonts.js';
+import FontLibraryPanel from './FontLibraryPanel.jsx';
 import { StyleTile, styleToCss } from '../StylePreview.jsx';
 import { Section, Slider, ColorPicker, Select, Toggle, Button, IconButton, Switch } from '../ui.jsx';
 import Icon from '../Icon.jsx';
 
 const SAMPLE_WORDS = ['WOW', 'SALE', 'NEW', 'EP.1'];
+const FA_SAMPLE_WORDS = ['فروش', 'جدید', 'قسمت ۱', 'حرفه‌ای'];
 
 export default function TextPanel() {
   const t = useT();
@@ -26,7 +29,14 @@ export default function TextPanel() {
   const prefs = useEditor((s) => s.prefs);
   const [sample, setSample] = useState(0);
   const [tab, setTab] = useState('styles');
+  const [styleFilter, setStyleFilter] = useState('all');
   const isText = layer?.type === 'text';
+
+  const visibleStyles = useMemo(() => {
+    if (styleFilter === 'fa') return TEXT_STYLES.filter((st) => st.fa);
+    if (styleFilter === 'latin') return TEXT_STYLES.filter((st) => !st.fa);
+    return TEXT_STYLES;
+  }, [styleFilter]);
 
   const favorites = useMemo(() => {
     return (prefs.favoriteStyles || [])
@@ -77,6 +87,7 @@ export default function TextPanel() {
           options={[
             { value: 'styles', label: t('text.stylesTitle').split(' ')[0] || 'Styles', icon: 'sparkles' },
             { value: 'type', label: t('text.title'), icon: 'type' },
+            { value: 'fonts', label: t('font.title'), icon: 'type' },
           ]}
         />
         <div className="grow" />
@@ -100,13 +111,33 @@ export default function TextPanel() {
                 {t('studio.needLayer')}
               </div>
             ) : null}
+            <div className="font-chips" style={{ marginBottom: 7 }}>
+              <button
+                className={`font-chip ${styleFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setStyleFilter('all')}
+              >
+                {t('font.group.all')}
+              </button>
+              <button
+                className={`font-chip ${styleFilter === 'fa' ? 'active' : ''}`}
+                onClick={() => setStyleFilter('fa')}
+              >
+                {t('font.group.persian')}
+              </button>
+              <button
+                className={`font-chip ${styleFilter === 'latin' ? 'active' : ''}`}
+                onClick={() => setStyleFilter('latin')}
+              >
+                EN
+              </button>
+            </div>
             <div className="style-grid">
-              {TEXT_STYLES.map((st) => (
+              {visibleStyles.map((st) => (
                 <StyleTile
                   key={st.id}
                   style={st}
                   name={t(st.nameKey)}
-                  sample={SAMPLE_WORDS[sample]}
+                  sample={st.fa ? FA_SAMPLE_WORDS[sample % FA_SAMPLE_WORDS.length] : SAMPLE_WORDS[sample]}
                   size={st.sizePct > 0.15 ? 18 : 21}
                   dark
                   onClick={() => applyStyleToSelection(st.id)}
@@ -159,18 +190,10 @@ export default function TextPanel() {
               </Section>
 
               <Section title={t('text.font')}>
-                <Select
-                  value={layer.fontId}
-                  options={FONT_LIST.map((f) => ({ value: f.id, label: f.label }))}
-                  onChange={(v) => {
-                    const f = FONT_LIST.find((x) => x.id === v);
-                    updateLayer(
-                      layer.id,
-                      { fontId: v, weight: f?.weights?.length ? f.weights[f.weights.length - 1] : 700 },
-                      { label: 'Font', relayoutText: true }
-                    );
-                  }}
-                />
+                <FontPicker layer={layer} t={t} />
+                <Button icon="sparkles" onClick={() => setTab('fonts')} style={{ width: '100%', marginTop: 6 }}>
+                  {t('font.open')}
+                </Button>
                 <Slider
                   label={t('text.size')}
                   min={10}
@@ -253,10 +276,63 @@ export default function TextPanel() {
             ))}
           </Section>
         </>
+      ) : tab === 'fonts' ? (
+        <FontLibraryPanel embedded />
       ) : (
         <TypeTab layer={layer} isText={isText} t={t} />
       )}
     </>
+  );
+}
+
+// A compact searchable font picker used inside the Type tab. The full library
+// lives in its own tab; this keeps one-click switching close to the controls.
+function FontPicker({ layer, t }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const current = fontById(layer.fontId);
+  const list = useMemo(
+    () => filterFonts(allFonts(), { query: q }).slice(0, 60),
+    [q, open]
+  );
+  return (
+    <div className="font-picker">
+      <button className="font-picker-btn" onClick={() => setOpen((v) => !v)} title={t('text.font')}>
+        <span style={{ fontFamily: `"${current.family}"` }}>{current.label}</span>
+        <Icon name={open ? 'chevronDown' : 'chevronRight'} size={12} />
+      </button>
+      {open ? (
+        <div className="font-picker-pop">
+          <input
+            type="search"
+            autoFocus
+            value={q}
+            placeholder={t('font.search')}
+            onChange={(e) => setQ(e.target.value)}
+            id="font-picker-search"
+          />
+          <div className="font-picker-list">
+            {list.map((f) => (
+              <button
+                key={f.id}
+                className={`font-picker-item ${f.id === layer.fontId ? 'active' : ''}`}
+                onClick={() => {
+                  updateLayer(
+                    layer.id,
+                    { fontId: f.id, weight: f.weights?.[f.weights.length - 1] || 700 },
+                    { label: 'Font', relayoutText: true }
+                  );
+                  setOpen(false);
+                }}
+              >
+                <span style={{ fontFamily: `"${f.family}"` }}>{f.label}</span>
+                {f.fa ? <b className="fa-badge">{t('font.persianBadge')}</b> : null}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

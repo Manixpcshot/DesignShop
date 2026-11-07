@@ -78,6 +78,19 @@ const TOOL_KEYS = {
   j: 'highlight',
 };
 
+// A toast carries either a key we can translate or a ready-made sentence
+// (usually a message from the OS). Translating an unknown key returns the key
+// itself, so this stays a single, unambiguous rule.
+function toastText(toast, t) {
+  const msg = toast?.message;
+  if (!msg) return '';
+  const translated = t(msg, toast.vars);
+  if (translated !== msg) return translated;
+  return String(msg).replace(/\{([a-zA-Z0-9_]+)\}/g, (m, name) =>
+    toast?.vars && toast.vars[name] != null ? String(toast.vars[name]) : m
+  );
+}
+
 export default function App() {
   const t = useT();
   const lang = useEditor((s) => s.lang);
@@ -495,7 +508,7 @@ export default function App() {
         {toasts.map((x) => (
           <div key={x.id} className={`toast ${x.type}`} onClick={() => dismissToast(x.id)} role="status">
             <Icon name={x.type === 'error' ? 'warning' : x.type === 'info' ? 'info' : 'check'} size={14} />
-            <span dir="auto">{x.message?.startsWith('toast.') || x.message?.startsWith('studio.') || x.message?.startsWith('adj.') ? t(x.message, x.vars) : x.message}</span>
+            <span dir="auto">{toastText(x, t)}</span>
           </div>
         ))}
       </div>

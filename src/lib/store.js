@@ -63,6 +63,9 @@ export const DEFAULT_PREFS = {
   smooth: true,
   restore: true,
   favoriteStyles: [],
+  recentFonts: [],
+  fontSample: '',
+  fontId: 'anton',
 };
 
 function readLS(key, fallback) {

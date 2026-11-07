@@ -241,6 +241,123 @@ await step('undo then redo returns to the same layer count', async () => {
   if (after !== before) throw new Error(`${before} -> ${after}`);
 });
 
+await step('font library lists bundled families and previews Persian', async () => {
+  await page.evaluate(() => window.DesignShop.store.setPanel('fonts'));
+  await new Promise((r) => setTimeout(r, 700));
+  const info = await page.evaluate(() => ({
+    rows: document.querySelectorAll('.font-row').length,
+    bundled: window.DesignShop.presets.FONT_LIST.length,
+    persian: window.DesignShop.presets.FONT_LIST.filter((f) => f.fa).length,
+    hasSample: !!document.getElementById('font-sample-input'),
+    hasImport: !!document.getElementById('font-file-input'),
+    // a Persian row must carry a Persian preview, otherwise the tile lies
+    faPreview: [...document.querySelectorAll('.font-row.is-fa .font-preview')]
+      .slice(0, 3)
+      .map((el) => /[\u0600-\u06FF]/.test(el.textContent)),
+  }));
+  if (!info.rows) throw new Error('no font rows rendered');
+  if (info.rows !== info.bundled) throw new Error(`rows ${info.rows} != bundled ${info.bundled}`);
+  if (!info.persian) throw new Error('no Persian-capable fonts');
+  if (!info.hasSample || !info.hasImport) throw new Error('sample input or import button missing');
+  if (!info.faPreview.every(Boolean)) throw new Error('Persian font tiles do not preview Persian text');
+});
+
+await step('font library filters Persian-only and applies a font to the text layer', async () => {
+  await page.evaluate(() => document.querySelector('.font-chip.fa-chip').click());
+  await new Promise((r) => setTimeout(r, 400));
+  const filtered = await page.evaluate(() => ({
+    rows: document.querySelectorAll('.font-row').length,
+    persian: window.DesignShop.presets.FONT_LIST.filter((f) => f.fa).length,
+  }));
+  if (filtered.rows !== filtered.persian) {
+    throw new Error(`Persian filter shows ${filtered.rows}, expected ${filtered.persian}`);
+  }
+
+  // applying from a tile must reach the selected text layer
+  await page.evaluate(() => {
+    const st = window.DesignShop.store;
+    const created = st.addNewLayer('text');
+    st.updateLayer(created.id, { text: 'سلام دنیا' }, { relayoutText: true });
+    window.__dsTestLayer = created.id;
+  });
+  await new Promise((r) => setTimeout(r, 300));
+  await page.evaluate(() => document.querySelectorAll('.font-row .font-main')[1].click());
+  await new Promise((r) => setTimeout(r, 400));
+  const applied = await page.evaluate(() => {
+    const state = window.DesignShop.store.getState();
+    const layer = state.doc.layers.find((l) => l.id === window.__dsTestLayer);
+    const font = window.DesignShop.presets.fontById(layer.fontId);
+    return { fontId: layer.fontId, fa: !!font.fa, recent: window.DesignShop.store.getState().prefs.recentFonts || [] };
+  });
+  if (!applied.fontId) throw new Error('font not applied');
+  if (!applied.recent.includes(applied.fontId)) throw new Error('recent fonts not recorded');
+});
+
+await step('importing a font file registers it, saves it and can remove it', async () => {
+  // Resolve a real WOFF2 that ships with the app, so the test exercises the
+  // actual parser/registration path rather than a mock.
+  const probe = await page.evaluate(async () => {
+    // Wait until at least one webfont has been fetched, then reuse its URL.
+    const findFont = async () => {
+      for (let i = 0; i < 40; i++) {
+        const hit = performance
+          .getEntriesByType('resource')
+          .map((e) => e.name)
+          .find((n) => /\.woff2(\?|$)/.test(n));
+        if (hit) return hit;
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      return null;
+    };
+    const fontUrl = await findFont();
+    if (!fontUrl) return null;
+    const res = await fetch(fontUrl);
+    const buf = new Uint8Array(await res.arrayBuffer());
+    const file = new File([buf], 'ImportedProbe.woff2', { type: 'font/woff2' });
+    const out = await window.DesignShop.fonts.importFontFile(file);
+    return {
+      ok: !!out.ok,
+      error: out.error || null,
+      saved: !!out.savedToDisk,
+      count: window.DesignShop.fonts.listImportedFonts().length,
+      painted: out.font ? window.DesignShop.fonts.isFontLoaded(out.font.family) : false,
+      id: out.font?.id || null,
+    };
+  });
+  if (!probe) throw new Error('no font asset found in the build');
+  if (!probe.ok) throw new Error('import failed: ' + probe.error);
+  if (!probe.count) throw new Error('font not added to the library');
+  if (!probe.saved) throw new Error('font not persisted');
+  if (!probe.painted) throw new Error('imported family does not paint');
+
+  // it must show up in the panel list too
+  await new Promise((r) => setTimeout(r, 400));
+  const listed = await page.evaluate(
+    () => document.querySelectorAll('.font-row').length
+  );
+  await page.evaluate(() => document.querySelector('.font-chip:last-child').click());
+  await new Promise((r) => setTimeout(r, 400));
+  const inPanel = await page.evaluate(() => document.querySelectorAll('.font-row').length);
+  if (!inPanel) throw new Error('imported font missing from the panel (rows=' + listed + ')');
+
+  // and removal must clean up both the list and storage
+  const removed = await page.evaluate((id) => {
+    window.DesignShop.fonts.removeImportedFont(id);
+    const stored = JSON.parse(localStorage.getItem('designshop.fonts.v1') || '[]');
+    return { count: window.DesignShop.fonts.listImportedFonts().length, stored: stored.length };
+  }, probe.id);
+  if (removed.count !== 0 || removed.stored !== 0) throw new Error('removal left state behind');
+});
+
+await step('an unsupported font file is rejected with a friendly error', async () => {
+  const res = await page.evaluate(async () => {
+    const file = new File([new Uint8Array([1, 2, 3])], 'notes.txt', { type: 'text/plain' });
+    return window.DesignShop.fonts.importFontFile(file);
+  });
+  if (res.ok) throw new Error('a .txt file was accepted as a font');
+  if (res.error !== 'font.err.format') throw new Error('wrong error: ' + res.error);
+});
+
 await step('no console or page errors during the whole session', async () => {
   if (pageErrors.length) throw new Error(pageErrors.slice(0, 3).join(' | '));
 });

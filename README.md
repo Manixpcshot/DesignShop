@@ -61,7 +61,8 @@ DesignShop is built from **two desktop shells sharing one UI**:
 - **Layers** — add, rename, drag to reorder, duplicate, merge down, flatten, lock, hide, opacity, 16 blend modes, transform (move/scale/rotate) with handles.
 - **Selection** — rectangular marquee, lasso, magic wand (color tolerance), fill selection, erase selection.
 - **Paint** — brush, highlighter, eraser with size control (`[` / `]`), eyedropper (right-click anywhere).
-- **Text** — 13 bundled fonts (incl. **Vazirmatn** for فارسی), 18 one-click thumbnail styles (neon, comic, chrome, gold, fire, holo, sticker, meme…), gradients, curves, letter spacing, alignment.
+- **Text** — 27 one-click thumbnail styles (neon, comic, chrome, gold, fire, holo, sticker, meme… plus nine Persian-first looks), gradients, curves, letter spacing, alignment.
+- **Font library** — 38 bundled families (21 Latin, 17 Persian-capable) previewed in their own letters, with search and script filters. **Import your own** `.ttf` / `.otf` / `.woff` / `.woff2` files by drag-and-drop; they persist across restarts and appear in every font list.
 - **Shapes & stickers** — rectangle, ellipse, triangle, star, heart, polygon, line, arrow, speech bubble, frame, progress bar, starburst, 96 emoji stickers.
 - **Layer effects** — drop shadow, outer glow, stroke/border, rounded corners, plus quick presets.
 - **Adjustments** — brightness, contrast, saturation, vibrance, hue, warmth, tint, exposure, highlights, shadows, B&W, sepia, invert, blur, sharpen, grain, pixelate, posterize, vignette, duotone, threshold — with **Auto enhance** and 14 one-click looks.

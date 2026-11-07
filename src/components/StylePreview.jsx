@@ -80,16 +80,28 @@ function paintTile(canvas, style, sample, viewW, viewH) {
   return true;
 }
 
-/** Styles with a dark fill need a lighter tile or they vanish. */
-function needsLightBackdrop(style) {
-  const hex = style.fill?.color || '#ffffff';
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!m) return false;
+const luminance = (hex) => {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '').trim());
+  if (!m) return null;
   const n = parseInt(m[1], 16);
-  const r = (n >> 16) & 255;
-  const g = (n >> 8) & 255;
-  const b = n & 255;
-  return 0.299 * r + 0.587 * g + 0.114 * b < 96 && !style.fill?.gradient;
+  return 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255);
+};
+
+/**
+ * Styles painted with a dark fill need a light stage or the letters vanish.
+ * Judge the fill only — it is what fills the letterform. A thick stroke is an
+ * outline, not the letter, so a dark stroke on a bright gradient still reads
+ * bright and belongs on the dark tile.
+ */
+function needsLightBackdrop(style) {
+  const gradient = style.fill?.gradient;
+  if (gradient?.colors?.length) {
+    const lums = gradient.colors.map(luminance).filter((v) => v != null);
+    if (!lums.length) return false;
+    return lums.reduce((a, b) => a + b, 0) / lums.length < 110;
+  }
+  const lum = luminance(style.fill?.color);
+  return lum != null && lum < 96;
 }
 
 export function StyleTile({ style, name, active, onClick, sample = 'Aa', dark }) {

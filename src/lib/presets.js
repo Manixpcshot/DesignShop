@@ -34,24 +34,10 @@ export const SIZE_GROUPS = [
 
 export const getSize = (id) => SIZE_PRESETS.find((s) => s.id === id) || SIZE_PRESETS[0];
 
-export const FONT_LIST = [
-  { id: 'anton', family: 'Anton', label: 'Anton', weights: [400], display: true, fa: false },
-  { id: 'archivo', family: 'Archivo Black', label: 'Archivo Black', weights: [400], display: true, fa: false },
-  { id: 'bebas', family: 'Bebas Neue', label: 'Bebas Neue', weights: [400], display: true, fa: false },
-  { id: 'oswald', family: 'Oswald', label: 'Oswald', weights: [500, 700], display: true, fa: false },
-  { id: 'poppins', family: 'Poppins', label: 'Poppins', weights: [600, 800], display: false, fa: false },
-  { id: 'montserrat', family: 'Montserrat', label: 'Montserrat', weights: [700, 900], display: false, fa: false },
-  { id: 'inter', family: 'Inter', label: 'Inter', weights: [400, 700, 900], display: false, fa: false },
-  { id: 'space', family: 'Space Grotesk', label: 'Space Grotesk', weights: [700], display: false, fa: false },
-  { id: 'playfair', family: 'Playfair Display', label: 'Playfair Display', weights: [700, 900], display: false, fa: false },
-  { id: 'lobster', family: 'Lobster', label: 'Lobster', weights: [400], display: true, fa: false },
-  { id: 'marker', family: 'Permanent Marker', label: 'Permanent Marker', weights: [400], display: true, fa: false },
-  { id: 'orbitron', family: 'Orbitron', label: 'Orbitron', weights: [700], display: true, fa: false },
-  { id: 'vazir', family: 'Vazirmatn', label: 'Vazirmatn — فارسی', weights: [400, 700], display: false, fa: true },
-];
-
-export const fontById = (id) => FONT_LIST.find((f) => f.id === id) || FONT_LIST[0];
-export const fontCss = (id) => `"${fontById(id).family}", "Vazirmatn", system-ui, sans-serif`;
+// Fonts live in lib/fonts.js so the library UI, the canvas renderer and the
+// importer all agree on one list. Re-exported here because presets.js is the
+// module the rest of the editor imports for design data.
+export { FONT_LIST, FONT_GROUPS, fontById, fontCss } from './fonts.js';
 
 const grad = (colors, angle = 20) => ({ type: 'linear', colors, angle });
 
@@ -325,6 +311,154 @@ export const TEXT_STYLES = [
       glow: { on: true, color: '#ff5a00', blur: 30, opacity: 85, spread: 3 },
       stroke: { on: true, width: 4, color: '#4a1000', opacity: 90 },
       shadow: { on: true, x: 0, y: 10, blur: 20, color: '#200600', opacity: 60 },
+      radius: { on: false, radius: 0 },
+    },
+  },
+
+  // ---------------------------------------------------- Persian-first styles
+  // These use families that actually cover فارسی, because a Latin-only family
+  // silently falls back to the system font when the headline is Persian.
+  {
+    id: 'faNeon',
+    nameKey: 'text.style.faNeon',
+    font: 'lalezar',
+    sizePct: 0.16,
+    uppercase: false,
+    weight: 400,
+    fa: true,
+    fill: { color: '#f3fbff' },
+    effects: {
+      glow: { on: true, color: '#00e0ff', blur: 30, opacity: 95, spread: 3 },
+      shadow: { on: true, x: 0, y: 6, blur: 18, color: '#03203a', opacity: 70 },
+      stroke: { on: false, width: 0, color: '#ffffff', opacity: 100 },
+      radius: { on: false, radius: 0 },
+    },
+  },
+  {
+    id: 'faBold',
+    nameKey: 'text.style.faBold',
+    font: 'noto-kufi',
+    sizePct: 0.15,
+    uppercase: false,
+    weight: 900,
+    fa: true,
+    fill: { color: '#ffe14d' },
+    effects: {
+      stroke: { on: true, width: 6, color: '#101010', opacity: 100 },
+      shadow: { on: true, x: 8, y: 8, blur: 0, color: '#101010', opacity: 100 },
+      glow: { on: false, color: '#ffffff', blur: 0, opacity: 0 },
+      radius: { on: false, radius: 0 },
+    },
+  },
+  {
+    id: 'faGradient',
+    nameKey: 'text.style.faGradient',
+    font: 'estedad',
+    sizePct: 0.14,
+    uppercase: false,
+    weight: 900,
+    fa: true,
+    fill: { color: '#ff2d95', gradient: grad(['#ff2d95', '#ffd166'], 15) },
+    effects: {
+      stroke: { on: true, width: 3, color: '#ffffff', opacity: 85 },
+      shadow: { on: true, x: 0, y: 10, blur: 24, color: '#000000', opacity: 46 },
+      glow: { on: false, color: '#ffffff', blur: 0, opacity: 0 },
+      radius: { on: false, radius: 0 },
+    },
+  },
+  {
+    id: 'faGold',
+    nameKey: 'text.style.faGold',
+    font: 'jomhuria',
+    sizePct: 0.19,
+    uppercase: false,
+    weight: 400,
+    fa: true,
+    fill: { color: '#ffcf6a', gradient: grad(['#fff6d0', '#ffd166', '#b8860b'], 90) },
+    effects: {
+      stroke: { on: true, width: 3, color: '#5b3a00', opacity: 80 },
+      shadow: { on: true, x: 0, y: 8, blur: 16, color: '#2a1600', opacity: 55 },
+      glow: { on: true, color: '#ffcf6a', blur: 18, opacity: 40, spread: 1 },
+      radius: { on: false, radius: 0 },
+    },
+  },
+  {
+    id: 'faCalligraphy',
+    nameKey: 'text.style.faCalligraphy',
+    font: 'amiri',
+    sizePct: 0.15,
+    uppercase: false,
+    weight: 700,
+    fa: true,
+    fill: { color: '#ffffff' },
+    effects: {
+      stroke: { on: false, width: 0, color: '#000000', opacity: 100 },
+      shadow: { on: true, x: 0, y: 5, blur: 20, color: '#000000', opacity: 40 },
+      glow: { on: false, color: '#ffffff', blur: 0, opacity: 0 },
+      radius: { on: false, radius: 0 },
+    },
+  },
+  {
+    id: 'faSticker',
+    nameKey: 'text.style.faSticker',
+    font: 'changa',
+    sizePct: 0.14,
+    uppercase: false,
+    weight: 800,
+    fa: true,
+    fill: { color: '#101015' },
+    effects: {
+      stroke: { on: true, width: 10, color: '#ffffff', opacity: 100 },
+      shadow: { on: true, x: 0, y: 9, blur: 18, color: '#000000', opacity: 34 },
+      glow: { on: false, color: '#ffffff', blur: 0, opacity: 0 },
+      radius: { on: false, radius: 0 },
+    },
+  },
+  {
+    id: 'faRetro',
+    nameKey: 'text.style.faRetro',
+    font: 'noto-naskh',
+    sizePct: 0.15,
+    uppercase: false,
+    weight: 700,
+    fa: true,
+    fill: { color: '#ffe8c2', gradient: grad(['#ffd7a0', '#ff7a59', '#c0392b'], 160) },
+    effects: {
+      stroke: { on: true, width: 5, color: '#2b1010', opacity: 100 },
+      shadow: { on: true, x: 6, y: 8, blur: 0, color: '#f5c04a', opacity: 100 },
+      glow: { on: false, color: '#ffffff', blur: 0, opacity: 0 },
+      radius: { on: false, radius: 0 },
+    },
+  },
+  {
+    id: 'faNews',
+    nameKey: 'text.style.faNews',
+    font: 'cairo',
+    sizePct: 0.13,
+    uppercase: false,
+    weight: 900,
+    fa: true,
+    fill: { color: '#ffffff' },
+    effects: {
+      stroke: { on: false, width: 0, color: '#ffffff', opacity: 100 },
+      shadow: { on: true, x: 0, y: 3, blur: 10, color: '#000000', opacity: 60 },
+      glow: { on: false, color: '#ffffff', blur: 0, opacity: 0 },
+      radius: { on: false, radius: 0 },
+    },
+  },
+  {
+    id: 'faModern',
+    nameKey: 'text.style.faModern',
+    font: 'vazir',
+    sizePct: 0.12,
+    uppercase: false,
+    weight: 700,
+    fa: true,
+    fill: { color: '#eaf2ff' },
+    effects: {
+      stroke: { on: false, width: 0, color: '#ffffff', opacity: 100 },
+      shadow: { on: true, x: 0, y: 8, blur: 26, color: '#0a1b3d', opacity: 55 },
+      glow: { on: false, color: '#ffffff', blur: 0, opacity: 0 },
       radius: { on: false, radius: 0 },
     },
   },

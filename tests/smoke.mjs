@@ -12,6 +12,8 @@ const docLib = await import('../src/lib/document.js');
 const render = await import('../src/lib/render.js');
 const store = await import('../src/lib/store.js');
 const wizard = await import('../src/lib/wizard.js');
+const fonts = await import('../src/lib/fonts.js');
+const fsMod = await import('node:fs');
 
 let pass = 0;
 let fail = 0;
@@ -555,6 +557,104 @@ test('wizard: writes headline text', () => {
 });
 
 // -------------------------------------------------------------- persistence
+
+// ---------------------------------------------------------------- font library
+test('fonts: every bundled family is imported by main.jsx', () => {
+  // A family declared in the library but never loaded ships as a broken
+  // choice: the canvas silently falls back to the system font.
+  const main = fsMod.readFileSync(new URL('../src/main.jsx', import.meta.url), 'utf8');
+  const imported = new Set([...main.matchAll(/@fontsource\/([a-z0-9-]+)\//g)].map((m) => m[1]));
+  // map library ids -> the @fontsource package that provides them
+  const pkg = (f) => f.family.toLowerCase().replace(/\s+/g, '-');
+  const missing = fonts.FONT_LIST.filter((f) => {
+    if (imported.has(pkg(f))) return false;
+    // a few packages are named differently from the family
+    const alias = {
+      'Archivo Black': 'archivo-black',
+      'Bebas Neue': 'bebas-neue',
+      'Space Grotesk': 'space-grotesk',
+      'Playfair Display': 'playfair-display',
+      'Permanent Marker': 'permanent-marker',
+      'Scheherazade New': 'scheherazade-new',
+      'Noto Naskh Arabic': 'noto-naskh-arabic',
+      'Noto Sans Arabic': 'noto-sans-arabic',
+      'Noto Kufi Arabic': 'noto-kufi-arabic',
+      'Markazi Text': 'markazi-text',
+      'League Spartan': 'league-spartan',
+      'Abril Fatface': 'abril-fatface',
+    };
+    return !imported.has(alias[f.family] || pkg(f));
+  });
+  assert(missing.length === 0, 'not imported in main.jsx: ' + missing.map((f) => f.family).join(', '));
+});
+
+test('fonts: ids are unique and Persian families are flagged', () => {
+  const ids = fonts.FONT_LIST.map((f) => f.id);
+  eq(new Set(ids).size, ids.length, 'duplicate font id');
+  const persian = fonts.FONT_LIST.filter((f) => f.fa);
+  assert(persian.length >= 12, 'expected a real Persian collection, got ' + persian.length);
+  for (const f of fonts.FONT_LIST) {
+    assert(f.family && f.label && f.weights?.length, `incomplete font entry: ${f.id}`);
+    assert(typeof f.display === 'boolean', `missing display flag: ${f.id}`);
+  }
+});
+
+test('fonts: every style points at a font that exists', () => {
+  const ids = new Set(fonts.FONT_LIST.map((f) => f.id));
+  const broken = presets.TEXT_STYLES.filter((st) => !ids.has(st.font));
+  assert(broken.length === 0, 'styles with unknown fonts: ' + broken.map((s) => s.id).join(', '));
+});
+
+test('fonts: Persian styles only use Persian-capable families', () => {
+  // This is the bug that makes a Persian headline silently fall back to the
+  // system font: a Persian style wired to a Latin-only family.
+  const bad = presets.TEXT_STYLES.filter(
+    (st) => st.fa && !fonts.fontById(st.font).fa
+  );
+  assert(bad.length === 0, 'Persian styles on Latin fonts: ' + bad.map((s) => s.id).join(', '));
+});
+
+test('fonts: filterFonts searches names and the Persian flag', () => {
+  const all = fonts.allFonts();
+  eq(fonts.filterFonts(all, { group: 'persian' }).length, all.filter((f) => f.group === 'persian').length);
+  assert(fonts.filterFonts(all, { persianOnly: true }).every((f) => f.fa));
+  assert(fonts.filterFonts(all, { query: 'lale' }).some((f) => f.family === 'Lalezar'));
+  eq(fonts.filterFonts(all, { query: 'zzz-no-such-font' }).length, 0);
+});
+
+test('fonts: file names become readable family labels', () => {
+  eq(fonts.guessFamilyFromFile('Vazirmatn-Bold.ttf'), 'Vazirmatn');
+  eq(fonts.guessFamilyFromFile('my_cool_font.woff2'), 'my cool font');
+  eq(fonts.guessFamilyFromFile('.ttf'), 'My Font');
+  assert(fonts.SUPPORTED_FONT_EXTENSIONS.includes('woff2'));
+});
+
+test('fonts: unsupported files are rejected with a dictionary key', async () => {
+  const res = await fonts.importFontFile({
+    name: 'notes.txt',
+    size: 12,
+    slice: () => ({ arrayBuffer: async () => new ArrayBuffer(12) }),
+  });
+  eq(res.ok, false);
+  eq(res.error, 'font.err.format');
+  // and the message actually exists in both languages
+  assert(DICT.en[res.error] && DICT.fa[res.error], 'missing error message: ' + res.error);
+});
+
+// ---------------------------------------------------------------- toast text
+test('toasts: every font message the panel can raise is translated', () => {
+  // The panel raises these by key. A missing key would show raw text to the
+  // user, which is exactly what the toast renderer used to do.
+  const keys = [
+    'font.applied', 'font.needTextLayer', 'font.removed', 'font.importedOne',
+    'font.importedMany', 'font.importFailed',
+    'font.err.format', 'font.err.tooBig', 'font.err.tooMany', 'font.err.read',
+    'font.err.register', 'font.err.register', 'font.err.quota', 'font.err.noFile',
+  ];
+  const missing = keys.filter((k) => !DICT.en[k] || !DICT.fa[k]);
+  assert(missing.length === 0, 'untranslated: ' + missing.join(', '));
+});
+
 test('store: recents are remembered and recycled', () => {
   store.newDocument({ w: 500, h: 500, name: 'Recent A' });
   assert(store.getState().recents.length >= 1, 'recent entry expected');

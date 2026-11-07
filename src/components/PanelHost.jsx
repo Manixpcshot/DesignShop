@@ -6,11 +6,13 @@ import TextPanel from './panels/TextPanel.jsx';
 import AdjustPanel from './panels/AdjustPanel.jsx';
 import LayersPanel from './panels/LayersPanel.jsx';
 import HistoryPanel from './panels/HistoryPanel.jsx';
+import FontLibraryPanel from './panels/FontLibraryPanel.jsx';
 import Icon from './Icon.jsx';
 
 const TABS = [
   { id: 'studio', labelKey: 'studio.title', shortKey: 'studio.title', icon: 'sparkles' },
   { id: 'text', labelKey: 'text.title', icon: 'type' },
+  { id: 'fonts', labelKey: 'font.title', icon: 'paint' },
   { id: 'adjust', labelKey: 'adj.title', icon: 'sliders' },
   { id: 'layers', labelKey: 'layers.title', icon: 'layers' },
   { id: 'history', labelKey: 'history.title', icon: 'history' },
@@ -38,6 +40,7 @@ export default function PanelHost() {
       <div className="panel-body">
         {panel === 'studio' ? <StudioPanel /> : null}
         {panel === 'text' ? <TextPanel /> : null}
+        {panel === 'fonts' ? <FontLibraryPanel /> : null}
         {panel === 'adjust' ? <AdjustPanel /> : null}
         {panel === 'layers' ? <LayersPanel /> : null}
         {panel === 'history' ? <HistoryPanel /> : null}
