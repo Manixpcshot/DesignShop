@@ -300,7 +300,6 @@ jobs:
               ext="${base##*.}"
               cp "$f" "release-rust/DesignShop-$VER-tauri-linux-x64.$ext"
             done
-          cp src-tauri/target/release/designshop release-rust/DesignShop || true
           ls -la release-rust
       - uses: actions/upload-artifact@v4
         with:
@@ -359,7 +358,13 @@ jobs:
         run: |
           set -e
           mkdir -p dist-release
+          # Ship installers, archives and manifests only. Build logs and the raw
+          # unstripped binary belong in run artifacts, not in a user's download
+          # list, so keep them out of the release.
           find artifacts -type f -print0 | while IFS= read -r -d '' f; do
+            case "$(basename "$f")" in
+              *.log|bundle-info*|DesignShop) continue ;;
+            esac
             cp -n "$f" dist-release/ 2>/dev/null || true
           done
           ls -la dist-release | head -40
