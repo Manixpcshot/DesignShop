@@ -116,6 +116,20 @@ npm run electron:build:linux      # AppImage, deb, rpm, tar.gz
 npx tauri build                   # Rust bundles (deb, rpm, AppImage)
 ```
 
+### Icons must be RGBA
+
+Tauri embeds the window/bundle icon at compile time and refuses anything that is
+not **8-bit RGBA** (PNG colour type 6). A palette-coloured PNG passes every
+"looks fine" check and then panics `generate_context!` during `cargo build`.
+Keep the icon set converted:
+
+```bash
+for f in src-tauri/icons/*.png build/icons/*.png build/icon.png; do
+  convert "$f" -define png:color-type=6 -depth 8 "PNG32:$f"
+done
+npm run check   # fails loudly if an icon ever regresses
+```
+
 ### Versioning & releases
 
 `npm run bump -- 1.0.7` (or `node scripts/bump-version.mjs 1.0.7`) syncs the

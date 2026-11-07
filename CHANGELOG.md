@@ -6,6 +6,32 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [1.0.10] — 2026-11-07
+
+The Rust/Tauri bundles finally ship in every release. Five consecutive CI runs
+failed on the same error (`proc macro panicked … generate_context!`); it turned
+out to be two separate config faults plus an icon format rule, and the failure
+was invisible because the log was unreachable.
+
+### Fixed
+- **Tauri build aborting with a proc-macro panic.** `bundle.appimage` is not a
+  valid Tauri v2 key (targets live in `bundle.targets`), and the smaller PNG
+  icons were palette-coloured, which Tauri rejects ("icon … is not RGBA").
+  Every icon is now 8-bit RGBA and `bundle.targets` is
+  `["deb", "rpm", "appimage", "nsis"]`, so releases now include
+  `DesignShop-<ver>-tauri-linux-x64.deb / .rpm / .AppImage`.
+- **Silent CI failures.** `continue-on-error` and `set +e` were hiding cargo's
+  exit code. Jobs now use `set -o pipefail` and inspect step outcomes, and Rust
+  failures are published as check-run annotations and a job summary, so the
+  real compiler message is always visible.
+- **Release asset list was cluttered** with `rust-build.log`, `rust-test.log`,
+  `bundle-info.log` and the raw unstripped `DesignShop` binary. Those stay in
+  run artifacts now.
+- `npm run check` verifies PNG colour type, so a non-RGBA icon can never reach
+  CI again.
+
+---
+
 ## [1.0.0] — 2026-11-06
 
 First public release. Two desktop shells (Electron + Rust/Tauri) share one
