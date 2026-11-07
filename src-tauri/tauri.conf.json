@@ -33,7 +33,12 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["deb", "rpm", "appimage", "nsis", "msi"],
+    "targets": [
+      "deb",
+      "rpm",
+      "appimage",
+      "nsis"
+    ],
     "publisher": "DesignShop",
     "copyright": "Copyright © 2026 DesignShop",
     "category": "GraphicsAndDesign",
@@ -46,23 +51,33 @@
       "icons/icon.ico",
       "icons/icon.png"
     ],
-    "resources": ["../README.md", "../LICENSE"],
+    "resources": [
+      "../README.md",
+      "../LICENSE"
+    ],
     "linux": {
       "deb": {
-        "depends": ["libgtk-3-0", "libwebkit2gtk-4.1-0", "libayatana-appindicator3-1", "librsvg2-2"]
+        "depends": [
+          "libgtk-3-0",
+          "libwebkit2gtk-4.1-0",
+          "libayatana-appindicator3-1",
+          "librsvg2-2"
+        ]
       }
     },
     "windows": {
-      "webviewInstallMode": { "type": "downloadBootstrapper" },
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
       "nsis": {
         "installerIcon": "icons/icon.ico",
         "installMode": "currentUser",
-        "languages": ["English", "Persian"],
+        "languages": [
+          "English",
+          "Persian"
+        ],
         "displayLanguageSelector": true
       }
-    },
-    "appimage": {
-      "bundleMediaFramework": false
     }
   },
   "plugins": {
