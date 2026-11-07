@@ -41,6 +41,8 @@ for (const f of required) {
   }
 }
 
+const rgIcons = required.filter((x) => x.endsWith('.png') && (x.includes('src-tauri/icons') || x.includes('build/icons') || x.endsWith('build/icon.png')));
+
 // png magic number check
 for (const f of required.filter((x) => x.endsWith('.png'))) {
   if (!fs.existsSync(f)) continue;
@@ -51,6 +53,30 @@ for (const f of required.filter((x) => x.endsWith('.png'))) {
     console.error(`✗ ${f} is not a PNG`);
   }
 }
+
+// Tauri refuses icons that are not 8-bit RGBA (colour type 6). A palette or
+// RGB PNG passes the magic-number check but panics `generate_context!` at
+// build time, so verify the IHDR colour type too.
+let nonRgba = 0;
+for (const f of rgIcons) {
+  if (!fs.existsSync(f)) continue;
+  const buf = fs.readFileSync(f);
+  if (buf.length < 26) {
+    failed++;
+    console.error(`✗ ${f} is truncated`);
+    continue;
+  }
+  const bitDepth = buf[24];
+  const colorType = buf[25];
+  if (colorType !== 6 || bitDepth !== 8) {
+    nonRgba++;
+    failed++;
+    console.error(
+      `✗ ${f} must be 8-bit RGBA for Tauri (found bitDepth ${bitDepth}, colour type ${colorType})`
+    );
+  }
+}
+if (!nonRgba) console.log(`verified ${rgIcons.length} RGBA icons`);
 
 console.log(`checked ${required.length} assets`);
 process.exit(failed ? 1 : 0);
