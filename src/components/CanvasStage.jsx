@@ -16,7 +16,8 @@ import {
 } from '../lib/store.js';
 import { layerCorners, pointInLayer, docToLocal, clamp } from '../lib/geometry.js';
 import { renderDocument, getLayerCanvas } from '../lib/render.js';
-import { createShapeLayer, createEmojiLayer, createTextLayer, layerId } from '../lib/document.js';
+import { createShapeLayer, createEmojiLayer, createTextLayer, refreshTextLayer, layerId } from '../lib/document.js';
+import { fontCss } from '../lib/presets.js';
 import { setToolOption } from '../lib/store.js';
 
 const SHAPE_TOOLS = ['rect', 'ellipse', 'line', 'arrow', 'star', 'heart', 'polygon', 'frame', 'highlight'];
@@ -64,6 +65,8 @@ export default function CanvasStage() {
   const { size, effZoom, fitZoom, pan } = usePanZoom(areaRef);
 
   const [spaceDown, setSpaceDown] = useState(false);
+  /** inline text editing: { id, value } while a headline is being typed */
+  const [editing, setEditing] = useState(null);
   const [drag, setDrag] = useState(null);
   const [hover, setHover] = useState(null);
   const paintRef = useRef(null);
@@ -354,10 +357,11 @@ export default function CanvasStage() {
         color: toolOptions.textColor,
         name: 'Text',
       });
-      addLayer(layer, { label: 'toast.textAdded' });
+      // start empty and edit it straight on the canvas, Photoshop-style
+      addLayer({ ...layer, text: '' }, { label: 'toast.textAdded', history: false });
       setTool('move');
+      setEditing({ id: layer.id, value: '' });
       toast('toast.textAdded');
-      setTimeout(() => document.getElementById('text-content-input')?.focus(), 120);
       return;
     }
     if (tool === 'sticker') {
@@ -860,12 +864,92 @@ export default function CanvasStage() {
     toast('studio.bgApplied');
   };
 
+  // ------------------------------------------------------ inline text editing
+  const editingLayer = editing ? doc?.layers.find((l) => l.id === editing.id) : null;
+
+  const commitInlineText = useCallback(
+    (raw) => {
+      const state = editing;
+      if (!state) return;
+      const value = (raw ?? state.value ?? '').replace(/\s+$/, '');
+      const layer = getState().doc?.layers.find((l) => l.id === state.id);
+      setEditing(null);
+      if (!layer) return;
+      if (!value.trim()) {
+        // an empty headline is just noise — remove it again
+        patch({ doc: { ...getState().doc, layers: getState().doc.layers.filter((l) => l.id !== state.id) }, selection: [] });
+        return;
+      }
+      const next = refreshTextLayer({ ...layer, text: value }, 'topLeft');
+      updateLayer(state.id, { text: next.text, w: next.w, h: next.h }, { label: 'Edit text' });
+    },
+    [editing]
+  );
+
+  /** Double-clicking a text layer edits it in place too. */
+  const startEditingLayer = useCallback((layer) => {
+    if (!layer || layer.type !== 'text' || layer.locked) return false;
+    selectLayer(layer.id);
+    setEditing({ id: layer.id, value: layer.text || '' });
+    return true;
+  }, []);
+
+  useEffect(() => {
+    if (!editing) return;
+    // The click that starts editing is still finishing when this runs; focusing
+    // immediately would be undone by the mouseup landing on the textarea and
+    // blurring it. Wait until the pointer sequence is over.
+    const focus = () => {
+      const el = document.getElementById('inline-text-input');
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(el.value.length, el.value.length);
+    };
+    const t = setTimeout(focus, 60);
+    window.addEventListener('pointerup', focus, { once: true });
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('pointerup', focus);
+    };
+  }, [editing?.id]);
+
   const unitSize = 30;
+  const editBox = (() => {
+    if (!editingLayer) return null;
+    const l = editingLayer;
+    const value = editing?.value ?? '';
+    const px = Math.max(10, l.fontSize * effZoom);
+    // grow with the text so a long headline is never clipped while typing
+    const longest = value.split('\n').reduce((m, line) => Math.max(m, line.length), 0);
+    const estimated = Math.max(l.w * effZoom, longest * px * 0.62 + px);
+    return {
+      left: l.x * effZoom,
+      top: l.y * effZoom,
+      width: Math.max(120, Math.min(estimated, (doc?.w || 1280) * effZoom - l.x * effZoom)),
+      height: Math.max(px * 1.6, l.h * effZoom),
+      fontSize: px,
+      lineHeight: l.lineHeight || 1.12,
+      fontFamily: fontCss(l.fontId),
+      uppercase: l.uppercase ? 'uppercase' : 'none',
+      fontWeight: l.weight || 700,
+      letterSpacing: `${(l.letterSpacing || 0) * effZoom}px`,
+    };
+  })();
+
   return (
     <div
       className={`canvas-area ${spaceDown ? 'pan-ready' : ''} ${drag?.mode === 'pan' ? 'panning' : ''}`}
       ref={areaRef}
       onPointerDown={onPointerDown}
+      onDoubleClick={(e) => {
+        if (!doc) return;
+        const pt = toDoc(e.clientX, e.clientY);
+        const hit = hitTest(pt);
+        if (hit && hit.type === 'text') {
+          e.preventDefault();
+          startEditingLayer(hit);
+        }
+      }}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
@@ -900,6 +984,48 @@ export default function CanvasStage() {
         >
           <canvas ref={baseRef} />
           <canvas ref={overlayRef} className="stage-overlay" />
+          {editingLayer && editBox ? (
+            <textarea
+              id="inline-text-input"
+              className="inline-text"
+              dir="auto"
+              spellCheck={false}
+              value={editing?.value ?? ''}
+              style={{
+                left: editBox.left,
+                top: editBox.top,
+                width: editBox.width,
+                height: editBox.height,
+                fontSize: editBox.fontSize,
+                lineHeight: editBox.lineHeight,
+                textAlign: editingLayer.align || 'center',
+                color: editingLayer.color || '#fff',
+                fontFamily: editBox.fontFamily,
+                fontWeight: editBox.fontWeight,
+                textTransform: editBox.uppercase,
+                letterSpacing: editBox.letterSpacing,
+              }}
+              onChange={(e) => setEditing((s) => (s ? { ...s, value: e.target.value } : s))}
+              onPointerDown={(e) => e.stopPropagation()}
+              onKeyDown={(e) => {
+                e.stopPropagation();
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  commitInlineText();
+                } else if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  commitInlineText();
+                }
+              }}
+              onBlur={() => {
+                // a blur caused by the very first click must not commit
+                setTimeout(() => {
+                  if (document.activeElement?.id === 'inline-text-input') return;
+                  commitInlineText();
+                }, 0);
+              }}
+            />
+          ) : null}
         </div>
       </div>
 

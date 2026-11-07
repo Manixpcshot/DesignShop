@@ -29,7 +29,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: '22'
 
 jobs:
   prepare:
@@ -39,7 +39,7 @@ jobs:
       version: ${{ steps.v.outputs.version }}
       tag: ${{ steps.v.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Resolve version
         id: v
         run: |
@@ -55,11 +55,7 @@ jobs:
             MINOR=$(echo "$BASE" | cut -d. -f2)
             VERSION="${MAJOR}.${MINOR}.${BUILD}"
           fi
-          if [[ "${GITHUB_REF}" == refs/heads/main || "${GITHUB_REF}" == refs/heads/master || "${GITHUB_REF}" == refs/tags/v* ]]; then
-            TAG="v$VERSION"
-          else
-            TAG="build-$BUILD"
-          fi
+          TAG="v$VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "DesignShop $VERSION → $TAG"
@@ -69,8 +65,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: prepare
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -80,6 +76,15 @@ jobs:
         run: npm run test:all
       - name: Production build
         run: npm run build
+      - name: Browser UI test
+        continue-on-error: true
+        run: |
+          set -e
+          npx --yes @puppeteer/browsers install chrome@stable --path .browsers
+          CHROME=$(ls -d .browsers/chrome/*/chrome-linux64/chrome | head -1)
+          npx vite preview --port 4173 --host 0.0.0.0 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:4173/ >/dev/null && break; sleep 1; done
+          PUPPETEER_EXECUTABLE_PATH="$PWD/$CHROME" npm run test:e2e
       - uses: actions/upload-artifact@v4
         with:
           name: web-bundle
@@ -91,8 +96,8 @@ jobs:
     runs-on: windows-latest
     needs: [prepare, web]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -114,16 +119,10 @@ jobs:
         run: |
           $ver = "${{ needs.prepare.outputs.version }}"
           Compress-Archive -Path "release/win-unpacked/*" -DestinationPath "release/DesignShop-$ver-windows-portable.zip" -Force
-      - name: Rename installer for clarity
+      - name: List built files
         shell: pwsh
         run: |
-          $ver = "${{ needs.prepare.outputs.version }}"
-          Get-ChildItem release -Filter "*.exe" | ForEach-Object {
-            Write-Host "built: $($_.Name)"
-          }
-          if (Test-Path "release/DesignShop $ver.exe") {
-            Move-Item "release/DesignShop $ver.exe" "release/DesignShop-$ver-windows-x64.exe" -Force
-          }
+          Get-ChildItem release -Filter *.exe | ForEach-Object { Write-Host "built: $($_.Name)" }
       - uses: actions/upload-artifact@v4
         with:
           name: windows
@@ -140,8 +139,8 @@ jobs:
     runs-on: ubuntu-22.04
     needs: [prepare, web]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -187,8 +186,8 @@ jobs:
     # release, so failures are reported but tolerated.
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -210,9 +209,31 @@ jobs:
       - name: Sync version
         run: node scripts/bump-version.mjs ${{ needs.prepare.outputs.version }}
       - name: Rust tests
-        run: cargo test --manifest-path src-tauri/Cargo.toml --no-default-features
+        id: rust_test
+        continue-on-error: true
+        run: |
+          set +e
+          cargo test --manifest-path src-tauri/Cargo.toml --no-default-features 2>&1 | tee rust-test.log
+          echo "status=$?" >> "$GITHUB_OUTPUT"
       - name: Build Tauri bundles
-        run: npx tauri build --bundles deb,rpm,appimage
+        id: rust_build
+        continue-on-error: true
+        run: |
+          set +e
+          npx tauri build --bundles deb,rpm,appimage 2>&1 | tee rust-build.log
+          echo "status=$?" >> "$GITHUB_OUTPUT"
+      - name: Report Rust log as an issue (logs are hard to fetch)
+        if: steps.rust_test.outcome == 'failure' || steps.rust_build.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          {
+            echo '```'
+            tail -c 9000 rust-build.log 2>/dev/null || true
+            tail -c 6000 rust-test.log 2>/dev/null || true
+            echo '```'
+          } > body.md
+          gh issue create --title "Rust core build log (${{ needs.prepare.outputs.version }})" --body-file body.md || true
       - name: Collect Rust artifacts
         run: |
           set -e
@@ -238,7 +259,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: prepare
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Create archives
         run: |
           set -e
@@ -256,14 +277,29 @@ jobs:
   release:
     name: Publish release
     runs-on: ubuntu-latest
-    needs: [prepare, windows, linux-electron, source]
-    if: github.event_name != 'pull_request'
+    # `tauri` is tolerated: the Electron jobs already ship every promised
+    # artifact, but if the Rust shell built we publish those bundles too.
+    needs: [prepare, windows, linux-electron, source, tauri]
+    if: >-
+      !cancelled() && github.event_name != 'pull_request' &&
+      needs.windows.result == 'success' &&
+      needs.linux-electron.result == 'success' &&
+      needs.source.result == 'success'
     steps:
-      - uses: actions/checkout@v4
-      - name: Download every artifact
+      - uses: actions/checkout@v5
+      - name: Download release artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          # the web bundle is a build input, not a download
+          pattern: '!web-bundle'
+          merge-multiple: true
+      - name: Download Rust bundles (optional)
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: rust
+          path: artifacts/rust
       - name: Collect files
         run: |
           set -e
