@@ -7,8 +7,13 @@ import * as filters from './filters.js';
 import * as platform from './platform.js';
 import { PLATFORM } from './platform.js';
 import * as fonts from './fonts.js';
+import * as errors from './errors.js';
 
 store.attachRender(render);
+
+// Catch anything that escapes a handler, so a bug reports itself instead of
+// looking like a frozen canvas.
+errors.installErrorGuard();
 
 // Webfonts arrive asynchronously. Text layers rendered before they load would
 // stay baked with a fallback face, so invalidate the cache as soon as the real
@@ -46,6 +51,7 @@ if (typeof window !== 'undefined') {
     filters,
     platformLib: platform,
     fonts,
+    errors,
     platform: PLATFORM,
     version: documentLib.APP_VERSION,
     getState: store.getState,

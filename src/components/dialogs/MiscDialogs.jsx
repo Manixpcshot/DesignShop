@@ -217,36 +217,7 @@ export function AboutDialog() {
   );
 }
 
-export function UpdatesDialog() {
-  const t = useT();
-  return (
-    <Dialog title={t('menu.help.checkUpdates')} icon="download" size="sm" onClose={() => closeDialog('updates')}
-      footer={<Button variant="primary" onClick={() => closeDialog('updates')}>{t('close')}</Button>}>
-      <div className="row" style={{ gap: 8, marginBottom: 10 }}>
-        <Icon name="check" size={16} />
-        <b style={{ fontSize: 13 }}>{t('misc.upToDate')}</b>
-      </div>
-      <div className="mute-2" style={{ fontSize: 12, lineHeight: 1.6 }}>
-        {t('misc.newVersionAsk')}
-      </div>
-      <div className="card" style={{ marginTop: 12, fontSize: 11.5, lineHeight: 1.7 }}>
-        <div>• Windows — .exe installer + portable .exe</div>
-        <div>• Debian / Ubuntu — .deb</div>
-        <div>• Fedora / openSUSE — .rpm</div>
-        <div>• Linux / Arch — .AppImage &amp; tar.gz</div>
-        <div>• Every release includes the source code</div>
-      </div>
-      <div className="stat-row" style={{ marginTop: 10 }}>
-        <span>{t('app.version')}</span>
-        <b>{VERSION}</b>
-      </div>
-      <div className="stat-row">
-        <span>Channel</span>
-        <b>{PLATFORM === 'web' ? 'preview' : 'stable'}</b>
-      </div>
-    </Dialog>
-  );
-}
+export { default as UpdatesDialog } from './UpdateDialog.jsx';
 
 export function GuideDialog() {
   const t = useT();

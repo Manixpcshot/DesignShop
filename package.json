@@ -1,7 +1,7 @@
 {
   "name": "designshop",
   "productName": "DesignShop",
-  "version": "1.0.0",
+  "version": "1.0.13",
   "description": "DesignShop — a friendly Photoshop-class editor for thumbnails & social graphics. EN/FA. Windows, Linux & Arch.",
   "main": "electron/main.js",
   "type": "module",

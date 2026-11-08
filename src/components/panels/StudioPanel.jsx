@@ -171,7 +171,12 @@ export default function StudioPanel() {
                 className="kit-head"
                 style={{
                   color: kit.textColor,
-                  textShadow: `0 2px 9px rgba(0,0,0,.6), 0 0 2px rgba(0,0,0,.5)`,
+                  // A white headline on a pale kit background vanishes. Give
+                  // every headline a halo in the opposite direction so the
+                  // sample stays readable on light and dark kits alike.
+                  textShadow: lightText(kit.textColor)
+                    ? '0 1px 2px rgba(0,0,0,.85), 0 2px 10px rgba(0,0,0,.55), 0 0 1px rgba(0,0,0,.9)'
+                    : '0 1px 2px rgba(255,255,255,.85), 0 2px 10px rgba(255,255,255,.5)',
                   fontFamily: 'Anton, Inter, sans-serif',
                 }}
               >
@@ -255,3 +260,12 @@ export default function StudioPanel() {
 }
 
 export { Slider, IconButton, Toggle };
+
+/** True when a colour is light enough to need a dark halo behind it. */
+function lightText(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '').trim());
+  if (!m) return true;
+  const n = parseInt(m[1], 16);
+  const lum = 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255);
+  return lum > 140;
+}

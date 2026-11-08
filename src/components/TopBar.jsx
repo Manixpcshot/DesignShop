@@ -58,6 +58,7 @@ export default function TopBar({ onHelp }) {
   const rulers = useEditor((s) => s.showRulers);
   const snap = useEditor((s) => s.snap);
   const recents = useEditor((s) => s.recents);
+  const updateAvailable = useEditor((s) => s.updateAvailable);
   const [openKey, setOpenKey] = useState(null);
   const [editingName, setEditingName] = useState(false);
 
@@ -248,9 +249,38 @@ export default function TopBar({ onHelp }) {
           title={t('menu.view.language')}
           onClick={() => setLang(lang === 'en' ? 'fa' : 'en')}
         />
-        <IconButton icon={theme === 'light' ? 'sun' : 'moon'} title={t('menu.view.theme')} onClick={() => setTheme(theme === 'light' ? 'dark' : theme === 'dark' ? 'midnight' : 'light')} />
+        <Menu
+          label={theme === 'light' ? '☀' : theme === 'midnight' ? '◐' : '☾'}
+          openKey={openKey}
+          setOpenKey={setOpenKey}
+          items={[
+            {
+              label: `${theme === 'light' ? '● ' : ''}${t('pref.theme.light')}`,
+              onClick: () => setTheme('light'),
+            },
+            {
+              label: `${theme === 'dark' ? '● ' : ''}${t('pref.theme.dark')}`,
+              onClick: () => setTheme('dark'),
+            },
+            {
+              label: `${theme === 'midnight' ? '● ' : ''}${t('pref.theme.midnight')}`,
+              onClick: () => setTheme('midnight'),
+            },
+          ]}
+        />
         <IconButton icon="help" title={t('menu.help.docs')} onClick={() => openDialog('guide')} />
       </div>
+
+      {updateAvailable ? (
+        <button
+          className="update-pill"
+          onClick={() => openDialog('updates')}
+          title={t('update.found', { version: updateAvailable.version })}
+        >
+          <Icon name="download" size={12} />
+          {updateAvailable.version}
+        </button>
+      ) : null}
 
       {doc ? (
         <div className="row" style={{ gap: 6 }}>

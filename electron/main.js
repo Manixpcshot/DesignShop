@@ -5,6 +5,7 @@
 import { app, BrowserWindow, dialog, ipcMain, shell, Menu, clipboard, nativeImage } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -206,6 +207,48 @@ ipcMain.handle('app:autosave', (_e, { fileName, text }) => {
 
 ipcMain.handle('menu:setLanguage', (_e, labels) => {
   if (labels && typeof labels === 'object') buildMenu((k) => labels[k] || k);
+  return true;
+});
+
+
+// ---------------------------------------------------------------- auto update
+// The renderer decides *whether* an update exists (it talks to the GitHub
+// API); the main process only performs the privileged part — download the
+// installer, put it somewhere the user can find, and hand control over.
+ipcMain.handle('update:install', async (_e, { url, version } = {}) => {
+  if (!url) return { ok: false, error: 'no-url' };
+  try {
+    const res = await fetch(url, { redirect: 'follow' });
+    if (!res.ok) return { ok: false, error: `download failed (${res.status})` };
+    const buf = Buffer.from(await res.arrayBuffer());
+    const name = decodeURIComponent(String(url).split('/').pop() || `DesignShop-${version}`);
+    const dir = path.join(app.getPath('downloads'), 'DesignShop');
+    fs.mkdirSync(dir, { recursive: true });
+    const file = path.join(dir, name);
+    fs.writeFileSync(file, buf);
+
+    if (process.platform === 'linux' && name.endsWith('.AppImage')) {
+      fs.chmodSync(file, 0o755);
+    }
+    // Reveal the download and let the user run the installer. Replacing a
+    // running binary in place is not safe on any platform, so we never do it.
+    shell.showItemInFolder(file);
+    await dialog.showMessageBox({
+      type: 'info',
+      title: `DesignShop ${version || ''}`.trim(),
+      message: 'The new version has been downloaded.',
+      detail: `Saved to:\n${file}\n\nClose DesignShop and open that file to finish updating.`,
+      buttons: ['OK'],
+    });
+    return { ok: true, path: file };
+  } catch (err) {
+    return { ok: false, error: String(err?.message || err) };
+  }
+});
+
+ipcMain.handle('shell:openExternal', async (_e, url) => {
+  if (!/^https?:\/\//i.test(String(url || ''))) return false;
+  await shell.openExternal(url);
   return true;
 });
 

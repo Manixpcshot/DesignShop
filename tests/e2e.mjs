@@ -358,8 +358,106 @@ await step('an unsupported font file is rejected with a friendly error', async (
   if (res.error !== 'font.err.format') throw new Error('wrong error: ' + res.error);
 });
 
+await step('style clicks do not pile up toasts', async () => {
+  await page.evaluate(() => window.DesignShop.store.setPanel('text'));
+  await new Promise((r) => setTimeout(r, 600));
+  // The panel always opens on its first tab; a text layer must exist for the
+  // style tiles to be reachable at all.
+  await page.evaluate(() => {
+    const st = window.DesignShop.store;
+    if (!st.getState().doc.layers.some((l) => l.type === 'text')) {
+      const l = st.addNewLayer('text');
+      st.updateLayer(l.id, { text: 'PILE' }, { relayoutText: true });
+    }
+  });
+  await new Promise((r) => setTimeout(r, 500));
+  const tiles = await page.$$('.style-tile');
+  if (!tiles.length) throw new Error('no style tiles rendered');
+  for (let i = 0; i < Math.min(6, tiles.length); i++) {
+    await tiles[i].click();
+    await new Promise((r) => setTimeout(r, 70));
+  }
+  await new Promise((r) => setTimeout(r, 250));
+  const stack = await page.evaluate(() => ({
+    count: window.DesignShop.store.getState().toasts.length,
+    visible: document.querySelectorAll('.toast').length,
+  }));
+  if (stack.count > 3) throw new Error('toast stack grew to ' + stack.count);
+  if (stack.visible > 3) throw new Error(stack.visible + ' toasts on screen');
+});
+
+await step('hotkeys are ignored while a dialog is open', async () => {
+  await page.evaluate(() => window.DesignShop.store.setTool('move'));
+  await page.evaluate(() => window.DesignShop.store.openDialog('shortcuts'));
+  await new Promise((r) => setTimeout(r, 500));
+  for (const key of ['b', 'e', 't', 'z']) {
+    await page.keyboard.press(key);
+    await new Promise((r) => setTimeout(r, 80));
+  }
+  const tool = await page.evaluate(() => window.DesignShop.store.getState().activeTool);
+  await page.evaluate(() => window.DesignShop.store.closeDialog('shortcuts'));
+  await new Promise((r) => setTimeout(r, 300));
+  if (tool !== 'move') throw new Error('tool changed behind the dialog: ' + tool);
+});
+
+await step('clicking away from an empty text layer leaves nothing behind', async () => {
+  const before = (await layers()).length;
+  const box = await page.evaluate(() => {
+    const r = document.querySelector('.canvas-frame').getBoundingClientRect();
+    return { x: r.x, y: r.y };
+  });
+  await page.evaluate(() => window.DesignShop.store.setTool('text'));
+  await new Promise((r) => setTimeout(r, 200));
+  await page.mouse.click(box.x + 130, box.y + 110);
+  await new Promise((r) => setTimeout(r, 500));
+  const editing = await page.evaluate(() => document.querySelectorAll('.inline-text').length);
+  if (!editing) throw new Error('the inline editor did not open');
+  // click somewhere else without typing: the layer must be discarded
+  await page.mouse.click(box.x + 420, box.y + 300);
+  await new Promise((r) => setTimeout(r, 600));
+  const after = (await layers()).length;
+  const stillOpen = await page.evaluate(() => document.querySelectorAll('.inline-text').length);
+  if (stillOpen) throw new Error('editor stayed open');
+  if (after !== before) throw new Error(`empty text layer survived: ${before} -> ${after}`);
+});
+
+await step('the update dialog reports status instead of hanging', async () => {
+  await page.evaluate(() => window.DesignShop.store.openDialog('updates'));
+  await new Promise((r) => setTimeout(r, 2500));
+  const info = await page.evaluate(() => ({
+    open: !!document.querySelector('.update-status'),
+    status: document.querySelector('.update-status-text strong')?.textContent || '',
+    dot: document.querySelector('.update-dot')?.className || '',
+    hasCheck: [...document.querySelectorAll('.dialog button')].some((b) => /Check now/i.test(b.textContent)),
+  }));
+  await page.evaluate(() => window.DesignShop.store.closeDialog('updates'));
+  if (!info.open) throw new Error('updates dialog did not render');
+  if (!info.status.trim()) throw new Error('no status line');
+  if (!info.hasCheck) throw new Error('no check button');
+  // this sandbox has no network, so the honest outcome is the error state
+  if (!/is-(ok|error|available)/.test(info.dot)) throw new Error('status indicator unknown: ' + info.dot);
+});
+
+await step('all three themes apply and persist', async () => {
+  for (const theme of ['light', 'midnight', 'dark']) {
+    await page.evaluate((t) => window.DesignShop.store.setTheme(t), theme);
+    await new Promise((r) => setTimeout(r, 250));
+    const applied = await page.evaluate(() => document.documentElement.dataset.theme);
+    if (applied !== theme) throw new Error(`${theme} did not apply (got ${applied})`);
+  }
+  const stored = await page.evaluate(
+    () => JSON.parse(localStorage.getItem('designshop.prefs.v1') || '{}').theme
+  );
+  if (stored !== 'dark') throw new Error('theme not persisted: ' + stored);
+});
+
 await step('no console or page errors during the whole session', async () => {
-  if (pageErrors.length) throw new Error(pageErrors.slice(0, 3).join(' | '));
+  // A blocked outbound request (offline machine, proxy, CI without network)
+  // surfaces as a console error but is not a bug in the app.
+  const isNetworkNoise = (msg) =>
+    /ERR_CERT|ERR_NAME_NOT_RESOLVED|ERR_INTERNET_DISCONNECTED|ERR_NETWORK|Failed to fetch|api\.github\.com/i.test(msg);
+  const real = pageErrors.filter((m) => !isNetworkNoise(m));
+  if (real.length) throw new Error(real.slice(0, 3).join(' | '));
 });
 
 await browser.close();

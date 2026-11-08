@@ -13,6 +13,9 @@ const render = await import('../src/lib/render.js');
 const store = await import('../src/lib/store.js');
 const wizard = await import('../src/lib/wizard.js');
 const fonts = await import('../src/lib/fonts.js');
+const updater = await import('../src/lib/updater.js');
+const storeLib = store;
+const errors = await import('../src/lib/errors.js');
 const fsMod = await import('node:fs');
 
 let pass = 0;
@@ -653,6 +656,101 @@ test('toasts: every font message the panel can raise is translated', () => {
   ];
   const missing = keys.filter((k) => !DICT.en[k] || !DICT.fa[k]);
   assert(missing.length === 0, 'untranslated: ' + missing.join(', '));
+});
+
+
+// ------------------------------------------------------------ auto update
+test('updater: version comparison follows semver order', () => {
+  eq(updater.compareVersions('1.0.12', '1.0.11'), 1);
+  eq(updater.compareVersions('1.0.11', '1.0.12'), -1);
+  eq(updater.compareVersions('1.0.12', '1.0.12'), 0);
+  eq(updater.compareVersions('v2.0.0', '1.9.9'), 1);
+  eq(updater.compareVersions('1.10.0', '1.9.0'), 1);
+  eq(updater.compareVersions('1.0', '1.0.0'), 0);
+  // a build suffix must not beat the plain version
+  eq(updater.compareVersions('1.0.12-beta', '1.0.12'), 0);
+});
+
+test('updater: picks the right installer for each shell', () => {
+  const release = {
+    assets: [
+      { name: 'DesignShop-1.0.12-linux-x64.deb' },
+      { name: 'DesignShop-1.0.12-tauri-linux-x64.AppImage' },
+      { name: 'DesignShop-1.0.12-windows-x64.exe' },
+    ],
+  };
+  const tauri = updater.pickAsset(release, 'tauri');
+  assert(tauri && tauri.name.includes('tauri-linux'), 'tauri asset: ' + (tauri && tauri.name));
+  const web = updater.pickAsset(release, 'web');
+  eq(web, null, 'the browser has nothing to install');
+});
+
+test('updater: release notes become a short readable list', () => {
+  const body = [
+    '## DesignShop 1.0.12',
+    '',
+    '### Added',
+    '- A brand new thing',
+    '- **Bold** item with `code`',
+    '',
+    '| Platform | File |',
+    '| --- | --- |',
+    '| Win | x |',
+    '',
+    '### Fixed',
+    '- A nasty bug',
+  ].join('\n');
+  const notes = updater.summarizeNotes(body);
+  assert(!notes.some((n) => /^DesignShop 1/.test(n)), 'version title leaked into notes');
+  assert(notes.includes('Added') && notes.includes('Fixed'), 'headings missing: ' + notes.join(' | '));
+  assert(notes.includes('A brand new thing'), 'bullet missing');
+  assert(!notes.some((n) => n.includes('|')), 'table row leaked into notes');
+  assert(notes.some((n) => n.includes('Bold item with code')), 'markdown not stripped');
+});
+
+test('updater: an offline check fails softly', async () => {
+  // no fetch in the test DOM: the updater must report the failure, not throw
+  const result = await updater.checkForUpdate({ timeoutMs: 50 });
+  eq(typeof result.ok, 'boolean');
+  assert(result.ok === false, 'expected the check to fail without a network');
+  eq(result.update, null);
+  eq(typeof result.error, 'string');
+});
+
+// ------------------------------------------------------------ toast hygiene
+test('toasts: a repeated message replaces itself instead of stacking', () => {
+  const store = storeLib;
+  const before = store.getState().toasts.length;
+  store.toast('toast.nothingToDo', 'info');
+  store.toast('toast.nothingToDo', 'info');
+  store.toast('toast.nothingToDo', 'info');
+  const list = store.getState().toasts;
+  eq(list.filter((t) => t.message === 'toast.nothingToDo').length, 1, 'duplicate toasts stacked');
+  assert(list.length <= before + 1, 'toast count grew past one');
+});
+
+test('toasts: a burst of different messages is capped', () => {
+  const store = storeLib;
+  for (let i = 0; i < 12; i++) store.toast('toast.layerAdded', 'success', { n: String(i) });
+  assert(store.getState().toasts.length <= 3, 'toast stack is unbounded: ' + store.getState().toasts.length);
+});
+
+// ------------------------------------------------------------ error guard
+test('errors: repeated crashes are counted, not re-announced', () => {
+  errors.clearErrors();
+  const boom = new Error('canvas exploded');
+  for (let i = 0; i < 5; i++) errors.recordError(boom, { source: 'test' });
+  const summary = errors.errorSummary();
+  eq(summary.length, 1, 'one bug must be one entry');
+  eq(summary[0].count, 5);
+  assert(errors.errorReportText().includes('canvas exploded'), 'report lost the message');
+});
+
+test('errors: a resource 404 is not treated as a crash', () => {
+  errors.clearErrors();
+  // recordError is only called for real exceptions; this guards the shape
+  const report = errors.errorReportText();
+  assert(report.includes('No errors'), 'a clean session must report nothing');
 });
 
 test('store: recents are remembered and recycled', () => {

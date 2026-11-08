@@ -1181,13 +1181,22 @@ input[type='range']:hover::-webkit-slider-thumb {
 }
 .kit-tile .kit-title {
   position: absolute;
-  inset-block-end: 5px;
-  inset-inline-start: 7px;
+  inset-block-end: 4px;
+  inset-inline-start: 5px;
+  inset-inline-end: 5px;
+  padding: 2px 6px;
   font-weight: 800;
-  font-size: 12px;
+  font-size: 11.5px;
   color: #fff;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
+  /* The title sits on whatever colour the kit happens to use, so it gets its
+     own scrim instead of hoping the background is dark enough. */
+  background: rgba(6, 8, 14, 0.55);
+  border-radius: 5px;
+  backdrop-filter: blur(3px);
   letter-spacing: 0.3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .kit-tile .kit-head {
   position: absolute;
@@ -2351,4 +2360,173 @@ input[type='range']:hover::-webkit-slider-thumb {
 .style-tile.light-tile .tile-cap {
   color: #1c2230;
   text-shadow: none;
+}
+
+/* ============================================================
+   Auto update dialog
+   ============================================================ */
+.update-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 11px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+}
+.update-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: var(--text-mute);
+}
+.update-dot.is-ok {
+  background: #35c46b;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #35c46b 20%, transparent);
+}
+.update-dot.is-available {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+  animation: update-pulse 1.6s ease-in-out infinite;
+}
+.update-dot.is-error {
+  background: #ef4444;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #ef4444 22%, transparent);
+}
+@keyframes update-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+.update-status-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.update-status-text .mute-2 {
+  font-size: 10.5px;
+}
+
+.update-progress {
+  position: relative;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-3);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.update-progress-bar {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+  transition: width 0.3s var(--ease);
+}
+.update-progress span {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 100%;
+  font-size: 11px;
+  color: var(--text);
+}
+
+.update-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 11px;
+  background: var(--bg-1);
+  margin-bottom: 10px;
+}
+.update-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.update-card-head > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 12.5px;
+}
+.update-card-head .mute-2 {
+  font-size: 10.5px;
+}
+.update-notes {
+  margin: 0;
+  padding-inline-start: 15px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  max-height: 130px;
+  overflow-y: auto;
+}
+.update-notes li {
+  margin-bottom: 2px;
+}
+.link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10.5px;
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.link-btn:hover {
+  text-decoration: underline;
+}
+
+.update-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid var(--border-soft);
+  padding-top: 9px;
+}
+.update-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  cursor: pointer;
+}
+.update-option > span {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 12px;
+}
+.update-option em {
+  font-style: normal;
+  font-size: 10.5px;
+  color: var(--text-mute);
+}
+
+/* an update announcement in the top bar */
+.update-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 9px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  animation: update-glow 2.4s ease-in-out infinite;
+}
+@keyframes update-glow {
+  50% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent);
+  }
 }

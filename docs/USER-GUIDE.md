@@ -171,6 +171,35 @@ If it does not understand something it says so instead of guessing.
 
 ---
 
+## 7b. Staying up to date
+
+DesignShop updates itself from its own GitHub releases.
+
+- On launch it checks quietly in the background (every six hours). If a newer
+  version exists you get one small pill in the top bar — nothing interrupts
+  your work.
+- Click the pill, or **Help → Check for updates**, to see the version, the
+  release notes and a single download button.
+- On the desktop the matching installer is downloaded to your Downloads folder
+  and revealed in the file manager. Close DesignShop and run it — the app never
+  tries to replace itself while it is running.
+- In the browser preview you get the release page instead, which is the honest
+  answer: a web page cannot install a desktop app.
+- Turn the automatic check off with the switch in the updates dialog if you
+  prefer to update on your own schedule. Nothing about you is ever sent.
+
+## 7c. Themes
+
+The sun/moon button in the top bar opens a menu with all three themes:
+
+| Theme | Best for |
+| --- | --- |
+| **Light** | Bright rooms, printing, screenshots for documentation |
+| **Dark** | The default; long editing sessions |
+| **Midnight** | OLED screens and late nights |
+
+The choice is remembered, and the canvas, panels and dialogs all follow it.
+
 ## 8. Keyboard shortcuts
 
 Press `Ctrl/⌘ /` at any time for the full sheet. The essentials:
@@ -269,6 +298,34 @@ stay on your disk. No account, no analytics, no ads.
   دیده می‌شود و بعد از بستن برنامه هم می‌ماند.
 - محدودیت: هر فایل تا ۱۲ مگابایت، حداکثر ۶۰ فونت. فایل‌ها از کامپیوتر تو
   بیرون نمی‌روند.
+
+### به‌روزرسانی خودکار
+
+DesignShop خودش را از انتشارهای گیت‌هاب به‌روز می‌کند.
+
+- هنگام باز شدن برنامه، بی‌صدا هر شش ساعت یک‌بار بررسی می‌کند. اگر نسخه تازه‌ای
+  باشد، فقط یک نشان کوچک در نوار بالا ظاهر می‌شود — هیچ‌چیز کار تو را قطع نمی‌کند.
+- روی نشان بزن، یا از **راهنما → بررسی به‌روزرسانی**، تا نسخه، توضیحات انتشار
+  و یک دکمه دانلود را ببینی.
+- در نسخه دسکتاپ، فایل نصب مناسب در پوشه Downloads دانلود و در فایل‌منیجر
+  نمایش داده می‌شود. برنامه را ببند و فایل را اجرا کن — برنامه هرگز وسط کار
+  خودش را جایگزین نمی‌کند.
+- در پیش‌نمایش مرورگری، صفحه انتشار باز می‌شود؛ صفحه وب نمی‌تواند برنامه دسکتاپ
+  نصب کند.
+- با کلید داخل پنجره به‌روزرسانی می‌توانی بررسی خودکار را خاموش کنی. هیچ
+  اطلاعاتی از تو فرستاده نمی‌شود.
+
+### پوسته‌ها
+
+دکمه خورشید/ماه در نوار بالا منوی هر سه پوسته را باز می‌کند:
+
+| پوسته | مناسب برای |
+| --- | --- |
+| **روشن** | محیط پرنور، چاپ، اسکرین‌شات برای مستندات |
+| **تیره** | پیش‌فرض؛ کارهای طولانی |
+| **نیمه‌شب** | نمایشگرهای OLED و کار شبانه |
+
+انتخاب تو ذخیره می‌شود و بوم، پنل‌ها و پنجره‌ها همه با آن هماهنگ می‌شوند.
 
 ### میان‌برهای مهم
 

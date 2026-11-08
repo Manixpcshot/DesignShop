@@ -66,6 +66,10 @@ export const DEFAULT_PREFS = {
   recentFonts: [],
   fontSample: '',
   fontId: 'anton',
+  fontFamily: 'anton',
+  styleId: 'neon',
+  autoUpdate: true,
+  lastUpdateCheck: 0,
 };
 
 function readLS(key, fallback) {
@@ -114,6 +118,7 @@ function initialState() {
     clipboard: null,
     styleClipboard: null,
     toasts: [],
+    updateAvailable: null,
     dialogs: {
       new: false,
       export: false,
@@ -272,13 +277,48 @@ export function jumpToHistory(index) {
 }
 
 // ------------------------------------------------------------------ toasts
+// Toasts are the app's only transient feedback, so they must never become the
+// feedback itself. Two rules keep the stack readable:
+//   1. a repeat of the message that is already on screen only refreshes its
+//      timer — clicking five style tiles is one action, not five messages
+//   2. the stack is capped, oldest first, so a burst of *different* messages
+//      can never fill the canvas
+const MAX_TOASTS = 3;
+const TOAST_MS = { error: 5200, info: 3200, success: 2600 };
 let toastSeq = 0;
+
 export function toast(message, type = 'success', vars = null) {
+  if (!message) return null;
+  const current = state.toasts;
+  const varsKey = vars ? JSON.stringify(vars) : '';
+  const twin = current.find(
+    (t) => t.message === message && t.type === type && (t.vars ? JSON.stringify(t.vars) : '') === varsKey
+  );
+
+  if (twin) {
+    // same message still on screen: restart its clock instead of stacking
+    if (twin.timer) clearTimeout(twin.timer);
+    const id = twin.id;
+    twin.timer = setTimeout(() => dismissToast(id), TOAST_MS[type] || TOAST_MS.success);
+    return id;
+  }
+
   const id = ++toastSeq;
-  set({ toasts: [...state.toasts, { id, message, type, vars, at: Date.now() }] });
-  setTimeout(() => dismissToast(id), type === 'error' ? 5200 : 2800);
+  const entry = { id, message, type, vars, at: Date.now() };
+  entry.timer = setTimeout(() => dismissToast(id), TOAST_MS[type] || TOAST_MS.success);
+  // a burst of different messages: drop the oldest, and clear its timer so a
+  // dismissed toast cannot fire again and re-render a stale stack
+  const nextList = [...current, entry];
+  while (nextList.length > MAX_TOASTS) {
+    const dropped = nextList.shift();
+    if (dropped?.timer) clearTimeout(dropped.timer);
+  }
+  set({ toasts: nextList });
+  return id;
 }
 export function dismissToast(id) {
+  const hit = state.toasts.find((x) => x.id === id);
+  if (hit?.timer) clearTimeout(hit.timer);
   set({ toasts: state.toasts.filter((x) => x.id !== id) });
 }
 

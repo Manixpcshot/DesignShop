@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld('designshop', {
   copyPng: (base64) => ipcRenderer.invoke('clipboard:copyPng', base64),
   autosave: (payload) => ipcRenderer.invoke('app:autosave', payload),
   setMenuLanguage: (labels) => ipcRenderer.invoke('menu:setLanguage', labels),
+  installUpdate: (payload) => ipcRenderer.invoke('update:install', payload),
+  openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
   onMenu: (handler) => {
     const channels = [
       'menu:new-design',

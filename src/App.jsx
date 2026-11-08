@@ -35,6 +35,7 @@ import {
   mergeDown,
   activeLayer,
   setToolOption,
+  updatePrefs,
 } from './lib/store.js';
 import { clearRenderCache } from './lib/render.js';
 import { quickExport, saveDesign, pickAndOpenFile } from './lib/actions.js';
@@ -59,6 +60,7 @@ import {
 } from './components/dialogs/MiscDialogs.jsx';
 import Icon from './components/Icon.jsx';
 import { PLATFORM, isDesktop, revealInFolder } from './lib/platform.js';
+import { checkForUpdate, shouldCheckNow } from './lib/updater.js';
 
 const TOOL_KEYS = {
   v: 'move',
@@ -119,6 +121,38 @@ export default function App() {
       // start screen by default; last design is one click away
     }
     if (st.prefs.seenTour === false) openDialog('tour');
+  }, []);
+
+  // ---------------------------------------------------------- auto update
+  // Silent by design: an available update gets one toast with a "Show" action,
+  // not a modal in the middle of someone's design. Offline or rate-limited
+  // checks do nothing at all.
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      const st = getState();
+      if (st.prefs.autoUpdate === false) return;
+      if (!shouldCheckNow()) return;
+      const result = await checkForUpdate();
+      if (cancelled || !result.ok) return;
+      updatePrefs({ lastUpdateCheck: result.checkedAt });
+      if (result.update) {
+        patch({ updateAvailable: result.update });
+        toast('update.found', 'info', { version: result.update.version });
+      }
+    };
+    // let the first paint finish before touching the network
+    // In development React mounts effects twice; a module-scoped guard keeps
+    // the update check to one request per session either way.
+    if (globalThis.__dsUpdateChecked) return;
+    globalThis.__dsUpdateChecked = true;
+    const timer = setTimeout(run, 4000);
+    const interval = setInterval(run, 6 * 60 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
   }, []);
 
   // ------------------------------------------------------- custom events
@@ -282,6 +316,18 @@ export default function App() {
       const tag = document.activeElement?.tagName;
       const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || document.activeElement?.isContentEditable;
       const mod = e.ctrlKey || e.metaKey;
+
+      // While a modal dialog is open the editor behind it must not react to
+      // hotkeys: pressing "e" inside the shortcuts sheet used to switch the
+      // (invisible) tool underneath. Only Escape and the dialog's own keys
+      // belong to the dialog.
+      if (Object.values(getState().dialogs || {}).some(Boolean)) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          for (const [k, v] of Object.entries(getState().dialogs)) if (v) closeDialog(k);
+        }
+        return;
+      }
 
       if (mod && e.key.toLowerCase() === 'k') {
         e.preventDefault();

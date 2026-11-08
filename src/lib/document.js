@@ -3,7 +3,7 @@ import { uid } from './geometry.js';
 import { styleById, kitById, fontById, ADDONS, getSize } from './presets.js';
 import { measureTextLayer } from './render.js';
 
-export const APP_VERSION = '1.0.0';
+export const APP_VERSION = '1.0.13';
 export const FILE_EXT = 'dshop';
 
 let seq = 0;

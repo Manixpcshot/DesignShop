@@ -357,11 +357,13 @@ export default function CanvasStage() {
         color: toolOptions.textColor,
         name: 'Text',
       });
-      // start empty and edit it straight on the canvas, Photoshop-style
+      // Start empty and edit it straight on the canvas, Photoshop-style.
+      // The layer is uncommitted on purpose: if the user clicks away without
+      // typing anything we delete it from the stack (no undo entry, no stray
+      // empty layer). addLayer's own label is the single toast for this action.
       addLayer({ ...layer, text: '' }, { label: 'toast.textAdded', history: false });
       setTool('move');
-      setEditing({ id: layer.id, value: '' });
-      toast('toast.textAdded');
+      setEditing({ id: layer.id, value: '', fresh: true });
       return;
     }
     if (tool === 'sticker') {
@@ -876,8 +878,13 @@ export default function CanvasStage() {
       setEditing(null);
       if (!layer) return;
       if (!value.trim()) {
-        // an empty headline is just noise — remove it again
-        patch({ doc: { ...getState().doc, layers: getState().doc.layers.filter((l) => l.id !== state.id) }, selection: [] });
+        // An empty headline is just noise — remove it again. A layer that was
+        // only created by this editing session leaves no trace at all
+        // (no undo step), so "click the canvas, change your mind" is free.
+        const doc = getState().doc;
+        const nextDoc = { ...doc, layers: doc.layers.filter((l) => l.id !== state.id) };
+        if (state.fresh) patch({ doc: nextDoc, selection: [] });
+        else commitDoc(nextDoc, { label: 'Delete text', select: null });
         return;
       }
       const next = refreshTextLayer({ ...layer, text: value }, 'topLeft');

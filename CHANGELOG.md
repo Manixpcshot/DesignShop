@@ -6,6 +6,47 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [1.0.13] — 2026-11-07
+
+Reliability pass plus the things a desktop app is expected to have: it updates
+itself, it has a real light theme, and it stops shouting at you.
+
+### Fixed
+- **Toasts stacked without limit.** Clicking six style tiles left six identical
+  "Style applied" cards covering the canvas, and a burst of errors could fill
+  the screen. A repeated message now refreshes its own timer instead of
+  stacking, and the stack is capped at three.
+- **Two toasts for one action.** The text tool queued `toast.textAdded` on top
+  of the label `addLayer` already raised, so every click announced itself twice.
+- **Hotkeys fired behind open dialogs.** Pressing `e` while reading the shortcut
+  sheet silently switched the (invisible) tool underneath. Keys are ignored
+  while a modal is open; only Escape gets through, and it closes the dialog.
+- **Uncaught errors were invisible.** A thrown handler or rejected promise left
+  the canvas looking frozen with no explanation. A global guard now records the
+  error, keeps the details, and shows one calm banner — repeated crashes are
+  counted rather than re-announced every frame.
+- **Empty text layers polluted the document.** Clicking the canvas with the
+  text tool and changing your mind left an invisible layer and an undo entry
+  behind. A layer that was never typed into is now discarded completely.
+- **Light theme had unreadable tiles.** Kit captions and the selected style
+  tile used white text on pale backgrounds.
+
+### Added
+- **Auto update from GitHub.** The app checks the public releases quietly on
+  launch (every six hours; replaceable with a switch in Preferences), shows a
+  small pill in the top bar when something is newer, and opens an updates
+  dialog with the release notes and a one-click download. The desktop shells
+  fetch the matching installer — Tauri through the Rust core, Electron through
+  the main process — while the browser honestly offers the release page.
+- **12 more text styles** — Emboss, Inset, Duotone, Sunset, Ice, Tropical,
+  Editorial, Brutalist, Glitch, Pastel, Comic burst, Carbon. 39 in total.
+- **A real theme menu** in the top bar. The old button cycled blindly and made
+  Midnight hard to reach; Light, Dark and Midnight are now one click each.
+
+### Changed
+- The build version is injected from `package.json` at build time, so the
+  updater can never compare against a version that drifted from the release.
+
 ## [1.0.12] — 2026-11-07
 
 Typography got the upgrade the thumbnail workflow needed: a real font library,

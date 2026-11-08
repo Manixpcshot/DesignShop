@@ -237,6 +237,73 @@ fn copy_png(base64: String) -> Result<bool, String> {
     Ok(true)
 }
 
+/// Download a release installer and hand it to the system.
+///
+/// Replacing a running binary is unsafe on every platform, so the core never
+/// tries to overwrite itself: it downloads the new package next to the user's
+/// other downloads, makes it executable when that makes sense, and reveals it
+/// in the file manager. The user closes DesignShop and runs the installer —
+/// the same contract as the Electron shell, so both behave predictably.
+///
+/// Returns the saved path on success.
+#[tauri::command]
+fn install_update(app: tauri::AppHandle, url: String, version: Option<String>) -> Result<String, String> {
+    use tauri_plugin_opener::OpenerExt;
+
+    let parsed = reqwest::Url::parse(&url).map_err(|e| format!("bad update URL: {e}"))?;
+    if parsed.scheme() != "https" {
+        return Err("update URL must be https".into());
+    }
+
+    let file_name = parsed
+        .path_segments()
+        .and_then(|s| s.last().map(|x| x.to_string()))
+        .filter(|n| !n.is_empty())
+        .unwrap_or_else(|| {
+            let v = version.unwrap_or_else(|| "latest".into());
+            format!("DesignShop-{v}-update.AppImage")
+        });
+
+    let dir = app
+        .path()
+        .download_dir()
+        .map_err(|e| e.to_string())?
+        .join("DesignShop");
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let target = dir.join(&file_name);
+
+    let response = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(180))
+        .build()
+        .map_err(|e| e.to_string())?
+        .get(parsed)
+        .send()
+        .map_err(|e| format!("download failed: {e}"))?;
+    if !response.status().is_success() {
+        return Err(format!("download failed: HTTP {}", response.status()));
+    }
+    let bytes = response.bytes().map_err(|e| e.to_string())?;
+    fs::write(&target, &bytes).map_err(|e| e.to_string())?;
+
+    #[cfg(unix)]
+    {
+        if file_name.ends_with(".AppImage") {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = fs::set_permissions(&target, fs::Permissions::from_mode(0o755));
+        }
+    }
+
+    // Show the user where the file landed instead of silently leaving it in a
+    // directory they would have to guess.
+    let reveal = target
+        .parent()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|| target.to_string_lossy().to_string());
+    let _ = app.opener().open_path(reveal, None::<&str>);
+
+    Ok(target.to_string_lossy().to_string())
+}
+
 /// Reveal a saved file in the system file manager.
 #[tauri::command]
 fn reveal_path(app: tauri::AppHandle, path: String) -> Result<bool, String> {
@@ -310,6 +377,7 @@ pub fn run() {
             export_project,
             copy_png,
             reveal_path,
+            install_update,
         ])
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {
